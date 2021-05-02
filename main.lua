@@ -401,11 +401,13 @@ function draw_tool_window2()
   settings_row:add_child(base_inst_txt)
   settings_row:add_child(base_inst_num)     
   
-  --per note GUI
-      
+  ----------------------------
+  --per degree GUI
+  ----------------------------    
   local degree_chroma_row = vb:row {}
   local degree_vel_row = vb:row {}
   local degree_aux_row = vb:row {}
+  local degree_editstep_row = vb:row {}
   
   --chroma
   for tfrowscan = 1,14 do
@@ -503,6 +505,38 @@ function draw_tool_window2()
     end
   end
   
+  --editstep  
+  for tfrowscan = 1,14 do
+    if (tfrowscan==1) then
+      local tf_obj =vb:text {
+          width = BUTTON_WIDTH,
+          height = BUTTON_HEIGHT/menu_button_scale,
+          align = "center",
+          text = "step:"
+        }
+      degree_editstep_row:add_child(tf_obj) 
+    elseif (tfrowscan==14) then
+      local tf_obj =vb:text {
+          width = BUTTON_WIDTH,
+          height = BUTTON_HEIGHT/menu_button_scale,
+          align = "center",
+          text = " "
+        }
+      degree_editstep_row:add_child(tf_obj) 
+   
+    else
+      local tf_obj =vb:textfield {
+          width = BUTTON_WIDTH,
+          height = BUTTON_HEIGHT/menu_button_scale,
+          align = "center",
+          text = "12",
+          id = "deg_editstep_in"..tfrowscan-1,
+          rprint("deg_editstep_in"..tfrowscan-1)
+        }
+      degree_editstep_row:add_child(tf_obj)
+    end
+  end
+  
   
   --order pre-matrix GUI
 
@@ -515,6 +549,7 @@ function draw_tool_window2()
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
   dialog_content:add_child(degree_aux_row)
+  dialog_content:add_child(degree_editstep_row)
   
   dialog_content:add_child(load_button)
   
@@ -616,6 +651,9 @@ function draw_tool_window2()
       else --indices are displayed here
       ---matrix cell text fields
       
+      -----------
+      --
+      --------------
       local colscan_button = vb:column {
         spacing = -10
       }
