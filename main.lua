@@ -44,6 +44,13 @@ local active_prime_type="P"
 local active_prime_index=1
 local active_prime_degree=1
 
+local note_inv_bool=true
+local vel_inv_bool=false
+local editstep_inv_bool=false
+local aux_inv_bool=false
+
+local editstep_inversion_axis = 12
+
 local function generate_prime() 
     
   initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
@@ -96,20 +103,51 @@ function generate_matrix()
       local cell_id = tostring(prime_index_row).."_"..tostring(prime_index_col)
       local cell_id_vel = "vel"..cell_id
       local cell_id_aux = "aux"..cell_id
-       
-      local degree_offset=(generated_prime[prime_index_row]-generated_prime[1])
+      local cell_id_editstep = "step"..cell_id
+
       local vel_loc = "deg_vel_in"..prime_index_col
       local aux_loc = "deg_aux_in"..prime_index_col
+      local editstep_loc = "deg_editstep_in"..prime_index_col
+
+      local degree_offset=(generated_prime[prime_index_row]-generated_prime[1])
+      local vel_offset=view_input["deg_vel_in"..prime_index_row].text-view_input.deg_vel_in1.text
+      local aux_offset=view_input["deg_aux_in"..prime_index_row].text-view_input.deg_aux_in1.text
+      local editstep_offset=view_input["deg_editstep_in"..prime_index_row].text-view_input.deg_editstep_in1.text
       
       local curvel = tostring(view_input[vel_loc].text)
       local curaux = tostring(view_input[aux_loc].text)
-      
+      local cureditstep = tostring(view_input[editstep_loc].text)
+            
       --print("view_input["..vel_loc.."].text")
       --print(tostring(view_input[vel_loc].text))
       
-      view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%12)
-      view_input[cell_id_vel].text = curvel
-      view_input[cell_id_aux].text = curaux
+      --inversion logic
+      local rot_index = (prime_index_col+prime_index_row-2)%12+1
+      
+      if note_inv_bool == true then
+        view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%12)
+      else
+        local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%12+1])
+        view_input[cell_id].text = callindex
+      end      
+      
+      if vel_inv_bool == true then
+        view_input[cell_id_vel].text = tostring((view_input[vel_loc].text-vel_offset)%127)
+      else
+        view_input[cell_id_vel].text = view_input["deg_vel_in"..rot_index].text
+      end
+      
+      if aux_inv_bool == true then
+        view_input[cell_id_aux].text = tostring((view_input[aux_loc].text-aux_offset)%127)
+      else
+        view_input[cell_id_aux].text = view_input["deg_aux_in"..rot_index].text
+      end
+      
+      if editstep_inv_bool == true then
+        view_input[cell_id_editstep].text = tostring((view_input[editstep_loc].text-editstep_offset)%editstep_inversion_axis)
+      else
+        view_input[cell_id_editstep].text = view_input["deg_editstep_in"..rot_index].text
+      end
     end
   end
 
@@ -397,7 +435,7 @@ local function file_parser()
   prsinc = 1
   
   for s in parsed_data[3]:gmatch("[^\r,]+") do
-    local tf_in = "deg_aux_in"..tostring(prsinc)
+    local tf_in = "deg_editstep_in"..tostring(prsinc)
     view_input[tf_in].text = s
     prsinc = prsinc + 1
   end 
@@ -405,7 +443,7 @@ local function file_parser()
   prsinc = 1
   
   for s in parsed_data[4]:gmatch("[^\r,]+") do
-    local tf_in = "deg_editstep_in"..tostring(prsinc)
+    local tf_in = "deg_aux_in"..tostring(prsinc)
     view_input[tf_in].text = s
     prsinc = prsinc + 1
   end  
@@ -467,7 +505,7 @@ function draw_window()
       height = BUTTON_HEIGHT/4,
       align = "center",
       text = "Base Note:"
-    }
+  }
     
   local base_note_num = vb:textfield {
       width = BUTTON_WIDTH,
@@ -485,7 +523,7 @@ function draw_window()
       height = BUTTON_HEIGHT/menu_button_scale,
       align = "center",
       text = "Base Vel:"
-    }
+  }
     
   local base_vel_num = vb:textfield {
       width = BUTTON_WIDTH,
@@ -496,14 +534,14 @@ function draw_window()
       notifier = function(text)
         rprint(text)
       end
-      }   
+  }   
       
   local base_inst_txt = vb:text {
       width = BUTTON_WIDTH,
       height = BUTTON_HEIGHT/menu_button_scale,
       align = "center",
       text = "inst #:"
-    }
+  }
     
   local base_inst_num = vb:textfield {
       width = BUTTON_WIDTH,
@@ -514,7 +552,7 @@ function draw_window()
       notifier = function(text)
         rprint(text)
       end
-      }
+  }
       
   ---buttons
   local file_row = vb:row{}
@@ -579,12 +617,25 @@ function draw_window()
         }
       degree_chroma_row:add_child(tf_obj) 
     elseif (tfrowscan==14) then
+      --[[
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
           height = BUTTON_HEIGHT/menu_button_scale,
           align = "center",
           text = " "
         }
+      ]]--
+      local tf_obj = vb:row{}
+      
+      local note_inv_bool = vb:checkbox {
+        value = true,
+        id = "note_inv_bool",
+        notifier = function(value)
+            note_inv_bool = value
+        end,
+      }
+      
+      tf_obj:add_child(note_inv_bool)
       degree_chroma_row:add_child(tf_obj) 
    
     else
@@ -609,14 +660,22 @@ function draw_window()
           align = "center",
           text = "vel:"
         }
+      
       degree_vel_row:add_child(tf_obj) 
+    
     elseif (tfrowscan==14) then
-      local tf_obj =vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT/menu_button_scale,
-          align = "center",
-          text = " "
-        }
+      
+      local tf_obj = vb:row{}
+    
+      local vel_inv_bool = vb:checkbox {
+        value = false,
+        id = "vel_inv_bool",
+        notifier = function(value)
+          vel_inv_bool = value 
+        end,
+      }
+      
+      tf_obj:add_child(vel_inv_bool)
       degree_vel_row:add_child(tf_obj) 
    
     else
@@ -643,12 +702,18 @@ function draw_window()
         }
       degree_aux_row:add_child(tf_obj) 
     elseif (tfrowscan==14) then
-      local tf_obj =vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT/menu_button_scale,
-          align = "center",
-          text = " "
-        }
+      
+      local tf_obj = vb:row{}
+    
+      local aux_inv_bool = vb:checkbox {
+        value = false,
+        id = "aux_inv_bool",
+        notifier = function(value)
+          aux_inv_bool = value  
+        end,
+      }
+      
+      tf_obj:add_child(aux_inv_bool)
       degree_aux_row:add_child(tf_obj) 
    
     else
@@ -675,12 +740,18 @@ function draw_window()
         }
       degree_editstep_row:add_child(tf_obj) 
     elseif (tfrowscan==14) then
-      local tf_obj =vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT/menu_button_scale,
-          align = "center",
-          text = " "
-        }
+      
+     local tf_obj = vb:row{}
+    
+      local editstep_inv_bool = vb:checkbox {
+        value = false,
+        id = "editstep_inv_bool",
+        notifier = function(value)
+          editstep_inv_bool = value  
+        end,
+      }
+      
+      tf_obj:add_child(editstep_inv_bool)
       degree_editstep_row:add_child(tf_obj) 
    
     else
@@ -861,7 +932,7 @@ function draw_window()
         mode = "left",
         vb:text {
           height = BUTTON_HEIGHT/3,
-          id = "Step"..tostring(rowscan-1).."_"..tostring(colscan-1),
+          id = "step"..tostring(rowscan-1).."_"..tostring(colscan-1),
           --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
           text = "S",
           align = "center",
