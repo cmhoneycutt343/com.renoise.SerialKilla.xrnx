@@ -45,13 +45,7 @@ local active_prime_index=1
 local active_prime_degree=1
 
 local function generate_prime() 
-  
-  print("renoise.ViewBuilder().views")
-  
-  local pookie = "1_1"
-  
-  print(vb.views[pookie].text)
-  
+    
   initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
   generated_prime = {}
   
@@ -110,8 +104,8 @@ function generate_matrix()
       local curvel = tostring(view_input[vel_loc].text)
       local curaux = tostring(view_input[aux_loc].text)
       
-      print("view_input["..vel_loc.."].text")
-      print(tostring(view_input[vel_loc].text))
+      --print("view_input["..vel_loc.."].text")
+      --print(tostring(view_input[vel_loc].text))
       
       view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%12)
       view_input[cell_id_vel].text = curvel
@@ -270,6 +264,155 @@ renoise.SongPos.global_line_index = property(
   end
 )
 
+
+----------------------------------------------
+-- File Loading 
+----------------------------------------------
+local function load_file_in_bytes_to_table(file_types,dialog_title)
+------------------------------------------------------------------------------------ 
+  ----------------------------------------------------------
+ --Helper to convert file stream stringbytes to "hex" format
+ ----------------------------------------------------------
+ local function num_to_hex_string(num)
+
+ num = tonumber(num)
+ if num == nil then
+ return
+ end
+ --format to 2 digits hex and return 
+ return string.format("%02X",num)
+ end
+  
+  --------------------------------------------------------------------------------
+  --read the user supplied file and put it byte by byte into a table using Lua io. 
+  --------------------------------------------------------------------------------
+  --create table to return
+  local file_bytes = {}
+  
+  --get file path
+  local file_in = renoise.app():prompt_for_filename_to_read(file_types,dialog_title)
+  
+  --check if file path returned
+  if file_in == "" then
+    return nil
+  else 
+
+    --incrementor so we can loop through whole file
+    local inc = 1 
+    ----------------
+    -- //Lua io.//
+    ----------------
+    -- io.open(),opens a file -- needs to be called whether you are reading or writing to a file
+    --"rb" indicates "read binary mode"
+    -----------------------------------
+    local file = assert(io.open(file_in,"rb"))   
+
+    --loop through the file 1 byte at a time 
+    while true do
+      ---------------
+      --//Lua io.//--
+      ---------------
+      --read the file 1 byte at a time
+      ---------------------------------
+      local current_byte = file:read(1)
+           
+      --if bytes exist continue looping
+      if current_byte ~= nil then
+        --convert string to bytes with the Lua string.byte()function
+        --current_byte = string.byte(current_byte)
+        --add byte to table using num_to_hex_string()
+        --file_bytes[inc] = num_to_hex_string(current_byte)
+        file_bytes[inc] = current_byte
+        
+        ---------------
+        --//Lua io.//--
+        ---------------
+        --increment file stream pointer along the file
+        --"set" means the `inc` offset is counted from file start ("cur" and "end" can be used as alternatives here)
+        ---------------------
+        file:seek("set", inc)
+        --increment for next time round (used for `file_bytes` and file:seek)
+        inc = inc + 1 
+        
+      else
+        --break the loop as there are no more bytes in the file
+        break
+      end
+    end   
+  end
+  return file_bytes  
+end --of load file in bytes to table
+
+--run above function and rprint returned table. If no file is loaded then nil will be printed
+----------------------------------------------------------------------------------------------
+
+--[[dataload_in = load_file_in_bytes_to_table({"*.srl"},"Choose a .srl SerialKilla File")]]--
+
+--[[
+dataparse1 = {}
+for s in dataload_in:gmatch("[^\r\n]+") do
+    table.insert(lines, s)
+end
+--]]
+
+local parsed_data = {}
+local parse_stringbuf = ""
+local parsed_index = 1
+local byte_buffer
+local dataload_in
+
+local function file_parser()
+  
+  for s = 1, #dataload_in do
+    
+    local current_byte = string.byte(dataload_in[s])
+    byte_buffer = dataload_in[s]
+    --print(current_byte)
+    
+    if current_byte == 10 then
+      parsed_data[parsed_index] = parse_stringbuf
+      parsed_index = parsed_index+1
+      parse_stringbuf = ""
+    else
+      parse_stringbuf = parse_stringbuf..byte_buffer
+    end
+  end
+  
+  local prsinc = 1
+  
+  for s in parsed_data[1]:gmatch("[^\r,]+") do
+    local tf_in = "prime_in"..tostring(prsinc)
+    view_input[tf_in].text = s
+    prsinc = prsinc + 1
+  end
+  
+  prsinc = 1
+  
+  for s in parsed_data[2]:gmatch("[^\r,]+") do
+    local tf_in = "deg_vel_in"..tostring(prsinc)
+    view_input[tf_in].text = s
+    prsinc = prsinc + 1
+  end 
+  
+  prsinc = 1
+  
+  for s in parsed_data[3]:gmatch("[^\r,]+") do
+    local tf_in = "deg_aux_in"..tostring(prsinc)
+    view_input[tf_in].text = s
+    prsinc = prsinc + 1
+  end 
+  
+  prsinc = 1
+  
+  for s in parsed_data[4]:gmatch("[^\r,]+") do
+    local tf_in = "deg_editstep_in"..tostring(prsinc)
+    view_input[tf_in].text = s
+    prsinc = prsinc + 1
+  end  
+  
+end
+
+
 --------------------------------------------------------------------------------
 -- GUI
 --------------------------------------------------------------------------------
@@ -318,7 +461,7 @@ function draw_window()
       }
     --]]
    
-  --[[base note stuff
+  --base note stuff
   local base_note_txt = vb:text {
       width = BUTTON_WIDTH,
       height = BUTTON_HEIGHT/4,
@@ -335,7 +478,7 @@ function draw_window()
       notifier = function(text)
         rprint(text)
       end
-  }]]--
+  }
               
   local base_vel_txt = vb:text {
       width = BUTTON_WIDTH,
@@ -372,7 +515,23 @@ function draw_window()
         rprint(text)
       end
       }
+      
   ---buttons
+  local file_row = vb:row{}
+  
+  local loadfile_button = vb:button {
+    text = "Load . srl File",
+    tooltip = "Click to Load Serial Killa Preset",
+    notifier = function()
+      --local my_text_view = vb.views.prime_el_A
+      --my_text_view.text = "Button was hit."
+          
+      dataload_in = load_file_in_bytes_to_table({"*.srl"},"Choose a .srl SerialKilla File")
+      file_parser()
+    end
+  }
+
+  file_row:add_child(loadfile_button)
 
   local gen_button = vb:button {
     text = "Generate Random Prime",
@@ -543,8 +702,11 @@ function draw_window()
   
   --dialog_content:add_child(settings_row)  
   
+  
+  dialog_content:add_child(file_row)
   menu_row:add_child(gen_button)
   dialog_content:add_child(menu_row)
+  
   
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
