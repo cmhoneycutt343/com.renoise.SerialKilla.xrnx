@@ -16,6 +16,10 @@ rprint("Run Serial Killa 2")
 -- matrix Generation Logic
 --------------------------------------------------------------------------------
 
+------Enable Test Mode------
+local test_mode = "true"
+----------------------------
+
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
 
@@ -34,12 +38,11 @@ local generated_prime = {}
 
 local last_button_id = "P1"
 
-local last_cell_id = "1_1"
+local last_cell_id = "col1_1"
 
 local active_prime_type="P"
 local active_prime_index=1
 local active_prime_degree=1
-
 
 local function generate_prime() 
   
@@ -133,7 +136,7 @@ end
 
 renoise.tool():add_keybinding {
     name = "Global:Tools:Serial Killa",
-    invoke = function() draw_tool_window2() end
+    invoke = function() draw_window() end
   }
 
 local function getmatrixdegree(primetype,primeindex,degree)
@@ -205,11 +208,11 @@ local function coloractivedegree(primetype,primeindex,degree)
     return
   end
   
-  view_input[last_cell_id].style = "disabled"
+  view_input[last_cell_id].style = "panel"
 
-  local cell_id = tostring(row_index).."_"..tostring(col_index)
+  local cell_id = "col"..tostring(row_index).."_"..tostring(col_index)
   print(cell_id)
-  view_input[cell_id].style = "strong"
+  view_input[cell_id].style = "plain"
   
   last_cell_id = cell_id
   
@@ -273,13 +276,10 @@ renoise.SongPos.global_line_index = property(
 
 renoise.tool():add_menu_entry {
   name = "Main Menu:Tools:Serial Killa",
-  invoke = function() draw_tool_window2() end 
+  invoke = function() draw_window() end 
 }
 
-
-
-
-function draw_tool_window2()
+function draw_window()
    -- as shown in dynamic_content(), you can build views either in the "nested"
   -- notation, or "by hand". You can of course also combine both ways, for 
   -- example if you want to dynamically build equally behaving view "blocks"
@@ -289,8 +289,8 @@ function draw_tool_window2()
  
 
   local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
-  local BUTTON_WIDTH = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
-  local BUTTON_HEIGHT = BUTTON_WIDTH
+  local BUTTON_WIDTH = 2.7*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
+  local BUTTON_HEIGHT = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   
   local DEFAULT_DIALOG_MARGIN = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN
   local DEFAULT_CONTROL_SPACING = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING
@@ -313,7 +313,7 @@ function draw_tool_window2()
           --local my_text_view = vb.views.prime_el_A
           --my_text_view.text = "Button was hit."
               
-          draw_tool_window2()
+          draw_window()
         end
       }
     --]]
@@ -537,19 +537,19 @@ function draw_tool_window2()
     end
   end
   
+  -----------------------
+  --pre-matrix GUI
+  -----------------------
   
-  --order pre-matrix GUI
-
-  
-  dialog_content:add_child(settings_row)  
+  --dialog_content:add_child(settings_row)  
   
   menu_row:add_child(gen_button)
   dialog_content:add_child(menu_row)
   
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
-  dialog_content:add_child(degree_aux_row)
   dialog_content:add_child(degree_editstep_row)
+  dialog_content:add_child(degree_aux_row)
   
   dialog_content:add_child(load_button)
   
@@ -654,44 +654,78 @@ function draw_tool_window2()
       -----------
       --
       --------------
-      local colscan_button = vb:column {
-        spacing = -10
+      local cell_column = vb:column{
+        style = "panel",
+        id = "col"..tostring(rowscan-1).."_"..tostring(colscan-1),
+
+      }
+        local cell_row_top = vb:row {
+        width = BUTTON_WIDTH,
+
+      }
+      local cell_row_bottom = vb:row {
+        width = BUTTON_WIDTH,
+
       }
       
-        local chroma_val = vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT/3,
-          align = "center",
+      local chroma_val = vb:horizontal_aligner {
+        width = BUTTON_WIDTH/2,
+        mode = "left",
+        vb:text {
+          height = BUTTON_HEIGHT/2,
           id = tostring(rowscan-1).."_"..tostring(colscan-1),
           --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "XXX",
-          style = "disabled"
-        }
-        
-        local vel_val = vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT/3,
-          align = "center",
+          text = "N",
+          font = "big",
+          style = "strong",
+          align = "center"
+        },
+      }
+      
+      local vel_val = vb:horizontal_aligner {
+        width = BUTTON_WIDTH/2,
+        mode = "right",       
+        vb:text {
+          height = BUTTON_HEIGHT/2,
           id = "vel"..tostring(rowscan-1).."_"..tostring(colscan-1),
           --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "YYY",
-          style = "disabled"
-        }
-        
-        local aux_val = vb:text {
-          width = BUTTON_WIDTH,
+          text = "V",
+          align = "center"
+        },
+      }
+      
+      local step_val = vb:horizontal_aligner {
+        width = BUTTON_WIDTH/2,
+        mode = "left",
+        vb:text {
           height = BUTTON_HEIGHT/3,
+          id = "Step"..tostring(rowscan-1).."_"..tostring(colscan-1),
+          --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+          text = "S",
           align = "center",
+        },
+      }
+      
+      local aux_val = vb:horizontal_aligner {
+        width = BUTTON_WIDTH/2,
+        mode = "right",
+        vb:text {
+          height = BUTTON_HEIGHT/3,
           id = "aux"..tostring(rowscan-1).."_"..tostring(colscan-1),
           --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "ZZZ",
-          style = "disabled"
-        }
-        
-        colscan_button:add_child(chroma_val)
-        colscan_button:add_child(vel_val)
-        colscan_button:add_child(aux_val)
-        rowscan_row:add_child(colscan_button)
+          text = "A",
+          style = "disabled",
+          align = "left"
+        },
+      }
+      
+      cell_row_top:add_child(chroma_val)
+      cell_row_top:add_child(vel_val)
+      cell_row_bottom:add_child(step_val)
+      cell_row_bottom:add_child(aux_val)
+      cell_column:add_child(cell_row_top)
+      cell_column:add_child(cell_row_bottom)
+      rowscan_row:add_child(cell_column)
         
       end
       
@@ -757,7 +791,22 @@ function draw_tool_window2()
 
   renoise.app():show_custom_dialog(
     "Batch Building Views", dialog_content)
+
+    if test_mode == "true" then
+      set_test_vars()
+    end    
 end
+
+-------------------------
+-- TESTING ZONE
+-------------------------
+
+function set_test_vars()
+   print("test variables active")
+   generate_prime()
+end
+
+
 
 
 
