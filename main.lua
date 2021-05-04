@@ -1,4 +1,4 @@
- -- add your test snippets and other code here, that you want to quickly
+  -- add your test snippets and other code here, that you want to quickly
 -- try out without writing a full blown 'tool'...
 
 -- dummy: recursively prints all available functions and classes
@@ -36,7 +36,7 @@ local view_input = vb.views
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
 
-local last_button_id = "P1"
+local last_button_id = "punchbutton"
 
 local last_cell_id = "col1_1"
 
@@ -55,10 +55,16 @@ local editstep_inversion_axis = 12
 
 local editstep_tmp = renoise.song().transport.edit_step
 
+local global_motif_length = 4
+
 local function generate_prime() 
     
   initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
   generated_prime = {}
+
+  if global_motif_length ~= 12 then
+    error("Motif length must be 12 for a 12 tone prime")
+  end
   
   local  current_prime_index = 0
   local  current_prime_val = 0
@@ -93,7 +99,7 @@ local function generate_prime()
 end
 
 function load_custom_prime()
-  for prime_index_col = 1,12 do
+  for prime_index_col = 1,global_motif_length do
       local tf_in = "prime_in"..tostring(prime_index_col)
       generated_prime[prime_index_col]=view_input[tf_in].text
    end    
@@ -101,8 +107,8 @@ function load_custom_prime()
 end
 
 function generate_matrix()
-  for prime_index_col = 1,12 do
-    for prime_index_row = 1,12 do
+  for prime_index_col = 1,global_motif_length do
+    for prime_index_row = 1,global_motif_length do
     
       local cell_id = tostring(prime_index_row).."_"..tostring(prime_index_col)
       local cell_id_vel = "vel"..cell_id
@@ -126,12 +132,12 @@ function generate_matrix()
       --print(tostring(view_input[vel_loc].text))
       
       --inversion logic
-      local rot_index = (prime_index_col+prime_index_row-2)%12+1
+      local rot_index = (prime_index_col+prime_index_row-2)%global_motif_length+1
       
       if note_inv_bool == true then
         view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%12)
       else
-        local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%12+1])
+        local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         view_input[cell_id].text = callindex
       end      
       
@@ -190,11 +196,11 @@ local function getmatrixdegree(primetype,primeindex,degree)
      col_index=primeindex
      row_index=degree
   elseif primetype==("R") then
-     col_index=13-degree
+     col_index=global_motif_length+1-degree
      row_index=primeindex
   elseif primetype==("RI") then
      col_index=primeindex
-     row_index=13-degree
+     row_index=global_motif_length+1-degree
   else
     print("invalid primetype")
     return
@@ -219,8 +225,6 @@ end
 local function prime_but_fcn(button_id)
   print("button_id")
   
-  
-  
   view_input[last_button_id].color={0,0,0}
  
   view_input[button_id].color={0x22, 0xaa, 0xff}
@@ -241,11 +245,11 @@ local function coloractivedegree(primetype,primeindex,degree)
      col_index=primeindex
      row_index=degree
   elseif primetype==("R") then
-     col_index=13-degree
+     col_index=global_motif_length+1-degree
      row_index=primeindex
   elseif primetype==("RI") then
      col_index=primeindex
-     row_index=13-degree
+     row_index=global_motif_length+1-degree
   else
     print("invalid primetype")
     return
@@ -496,8 +500,8 @@ function draw_window()
 
  
 
-  --local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
-  local CONTENT_MARGIN = 0
+  local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
+
   local BUTTON_WIDTH = 2.7*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   local BUTTON_HEIGHT = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   
@@ -635,7 +639,7 @@ function draw_window()
   local degree_editstep_row = vb:row {}
   
   --chroma
-  for tfrowscan = 1,14 do
+  for tfrowscan = 1,(global_motif_length+2) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -644,7 +648,7 @@ function draw_window()
           text = "note:"
         }
       degree_chroma_row:add_child(tf_obj) 
-    elseif (tfrowscan==14) then
+    elseif (tfrowscan==(global_motif_length+2)) then
       --[[
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -680,7 +684,7 @@ function draw_window()
   end
   
   --velocity  
-  for tfrowscan = 1,14 do
+  for tfrowscan = 1,(global_motif_length+2) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -691,7 +695,7 @@ function draw_window()
       
       degree_vel_row:add_child(tf_obj) 
     
-    elseif (tfrowscan==14) then
+    elseif (tfrowscan==(global_motif_length+2)) then
       
       local tf_obj = vb:row{}
     
@@ -720,7 +724,7 @@ function draw_window()
   end
   
   --aux  
-  for tfrowscan = 1,14 do
+  for tfrowscan = 1,(global_motif_length+2) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -729,7 +733,7 @@ function draw_window()
           text = "aux:"
         }
       degree_aux_row:add_child(tf_obj) 
-    elseif (tfrowscan==14) then
+    elseif (tfrowscan==(global_motif_length+2)) then
       
       local tf_obj = vb:row{}
     
@@ -758,7 +762,7 @@ function draw_window()
   end
   
   --editstep  
-  for tfrowscan = 1,14 do
+  for tfrowscan = 1,(global_motif_length+2) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -767,7 +771,7 @@ function draw_window()
           text = "step:"
         }
       degree_editstep_row:add_child(tf_obj) 
-    elseif (tfrowscan==14) then
+    elseif (tfrowscan==(global_motif_length+2)) then
       
      local tf_obj = vb:row{}
     
@@ -815,14 +819,14 @@ function draw_window()
   dialog_content:add_child(load_button)
   
       
-
-  for rowscan = 1,14 do
+  ------matrix GUI
+  for rowscan = 1,(global_motif_length+2) do
     -- create a row for each rowscan
     local rowscan_row = vb:row {}
 
-    for colscan = 1,14 do
+    for colscan = 1,(global_motif_length+2) do
       
-      if ((rowscan==1)and(colscan==1))or((rowscan==1)and(colscan==14))or((rowscan==14)and(colscan==1))or((rowscan==14)and(colscan==14)) then
+      if ((rowscan==1)and(colscan==1))or((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
         local colscan_button =vb:text {
           width = BUTTON_WIDTH,
           height = BUTTON_HEIGHT,
@@ -851,7 +855,7 @@ function draw_window()
       
             }
         rowscan_row:add_child(colscan_button)
-      elseif (colscan == 14) then
+      elseif (colscan == (global_motif_length+2)) then
       
         local colscan_button = vb:button {
               width = BUTTON_WIDTH,
@@ -889,7 +893,7 @@ function draw_window()
       
             }
         rowscan_row:add_child(rowscan_button)
-      elseif (rowscan == 14) then
+      elseif (rowscan == (global_motif_length+2)) then
       
         local rowscan_button = vb:button {
               width = BUTTON_WIDTH,
@@ -999,10 +1003,10 @@ function draw_window()
   local punch_row = vb:row{}
   
   local punch_button = vb:button {
-              width = BUTTON_WIDTH*4,
+              width = BUTTON_WIDTH*(global_motif_length/2+1),
               height = BUTTON_HEIGHT/menu_button_scale,
               text = "Punch",
-      
+              id = "punchbutton",
               notifier = function()
 
                 local received_degree
@@ -1028,9 +1032,12 @@ function draw_window()
                 
                 active_prime_degree=active_prime_degree+1
                 
-                if(active_prime_degree==13) then
+                if(active_prime_degree==(global_motif_length+1)) then
                   print('prime row complete')
+                  
+                  last_button_id = "punchbutton"
                   view_input[active_prime_type..active_prime_index].color={0x22, 0xaa, 0x00}
+                  
                   active_prime_degree=1
                 end
                 
@@ -1040,7 +1047,7 @@ function draw_window()
             }
             
   local jumpdown_button = vb:button {
-              width = BUTTON_WIDTH*4,
+              width = BUTTON_WIDTH*(global_motif_length/2+1),
               height = BUTTON_HEIGHT/menu_button_scale,
               text = "JumpDown by EditStep",
               
@@ -1072,7 +1079,7 @@ end
 
 function set_test_vars()
    print("test variables active")
-   generate_prime()
+   --generate_prime()
 end
 
 
