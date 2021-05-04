@@ -49,7 +49,11 @@ local vel_inv_bool=false
 local editstep_inv_bool=false
 local aux_inv_bool=false
 
+local global_edit_step = false
+
 local editstep_inversion_axis = 12
+
+local editstep_tmp = renoise.song().transport.edit_step
 
 local function generate_prime() 
     
@@ -201,7 +205,14 @@ local function getmatrixdegree(primetype,primeindex,degree)
   print(mat_cell_id)
   print(view_input[mat_cell_id].text)
   
-  return view_input[mat_cell_id].text
+  local degreeinfo = {}
+  
+  table.insert(degreeinfo,view_input[mat_cell_id].text)
+  table.insert(degreeinfo,view_input["vel"..mat_cell_id].text)
+  table.insert(degreeinfo,view_input["step"..mat_cell_id].text)
+  table.insert(degreeinfo,view_input["aux"..mat_cell_id].text)
+  
+  return degreeinfo
   
 end
 
@@ -210,7 +221,7 @@ local function prime_but_fcn(button_id)
   
   
   
-  --view_input[last_button_id].color={0,0,0}
+  view_input[last_button_id].color={0,0,0}
  
   view_input[button_id].color={0x22, 0xaa, 0xff}
   
@@ -250,12 +261,12 @@ local function coloractivedegree(primetype,primeindex,degree)
   
 end
 
-function placenote(degreein)
+function placenote(degreein,curvel)
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
-  local curvel = tonumber(view_input.base_vel_num.text)
+  local curvel = tonumber(curvel)
   local curinst = tonumber(view_input.base_inst_num.text)
-
+    
   
   renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].note_value=degreein+chromatic_offset
   renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].volume_value = curvel
@@ -298,9 +309,25 @@ renoise.SongPos.global_line_index = property(
         return
       end
     end
-    error("Global line (" .. tostring(val) .. ") is out of bounds.")
+    --error("Global line (" .. tostring(val) .. ") is out of bounds.")
+    editwarning()
   end
 )
+
+function editwarning()
+
+  local editwarning_title = "!Warning!"
+
+  local editwarning_content = vb:text {
+    text = "Your last punch reached past the end of score"
+  }
+
+  local editwarning_buttons = {"OK"}
+
+  renoise.app():show_custom_prompt(
+    editwarning_title, editwarning_content, editwarning_buttons)
+
+end
 
 
 ----------------------------------------------
@@ -979,14 +1006,22 @@ function draw_window()
 
                 local received_degree
 
-                received_degree = getmatrixdegree(active_prime_type,active_prime_index,active_prime_degree)
+                local received_degree_info = getmatrixdegree(active_prime_type,active_prime_index,active_prime_degree)
                 print(received_degree)
-                placenote(received_degree)
-
-               
-                local editstep_tmp = renoise.song().transport.edit_step
                 
-                jumpbystep(editstep_tmp)
+                --place note
+                placenote(received_degree_info[1],received_degree_info[2])
+
+
+  
+                if global_edit_step == false then            
+                  editstep_tmp = received_degree_info[3]
+                else
+                  editstep_tmp = renoise.song().transport.edit_step
+                end                 
+                  
+                  jumpbystep(editstep_tmp)
+                  
                 
                 renoise.app().window.active_middle_frame = renoise.ApplicationWindow.MIDDLE_FRAME_PATTERN_EDITOR
                 
