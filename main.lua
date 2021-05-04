@@ -496,7 +496,8 @@ function draw_window()
 
  
 
-  local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
+  --local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
+  local CONTENT_MARGIN = 0
   local BUTTON_WIDTH = 2.7*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   local BUTTON_HEIGHT = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   
