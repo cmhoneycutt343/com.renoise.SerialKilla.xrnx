@@ -26,7 +26,7 @@ local generated_prime = {}
 local  current_prime_index = 0
 local  current_prime_val = 0
 
-local chromatic_offset = 60
+local chromatic_offset = renoise.song().transport.octave*12
 
 local spray_spacing = 6
 
@@ -51,6 +51,7 @@ local aux_inv_bool=false
 
 local global_edit_step = false
 
+local chromatic_inversion_axis = 4
 local editstep_inversion_axis = 12
 
 local editstep_tmp = renoise.song().transport.edit_step
@@ -135,7 +136,7 @@ function generate_matrix()
       local rot_index = (prime_index_col+prime_index_row-2)%global_motif_length+1
       
       if note_inv_bool == true then
-        view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%12)
+        view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%chromatic_inversion_axis)
       else
         local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         view_input[cell_id].text = callindex
@@ -161,7 +162,7 @@ function generate_matrix()
     end
   end
 
-  local buttonname = "P1"
+  local buttonname = "punchbutton"
  
   view_input[buttonname].color = {0x00, 0x00, 0x00}
 end
@@ -270,7 +271,8 @@ function placenote(degreein,curvel)
   local curtrack =renoise.song().selected_track_index
   local curvel = tonumber(curvel)
   local curinst = tonumber(view_input.base_inst_num.text)
-    
+  
+  chromatic_offset = renoise.song().transport.octave*12  
   
   renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].note_value=degreein+chromatic_offset
   renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].volume_value = curvel
