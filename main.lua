@@ -270,7 +270,7 @@ function placenote(degreein,curvel)
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
   local curvel = tonumber(curvel)
-  local curinst = tonumber(view_input.base_inst_num.text)
+  local curinst = tonumber(renoise.song().selected_instrument_index)
   
   chromatic_offset = renoise.song().transport.octave*12  
   
