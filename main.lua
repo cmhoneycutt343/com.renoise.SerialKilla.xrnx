@@ -49,7 +49,10 @@ local vel_inv_bool=false
 local editstep_inv_bool=false
 local aux_inv_bool=false
 
-local global_edit_step = true
+local global_edit_step = false
+local aux_place_enable = false
+
+local auxstr="0M"
 
 local chromatic_inversion_axis = 12
 local editstep_inversion_axis = 12
@@ -279,11 +282,12 @@ local function coloractivedegree(primetype,primeindex,degree)
   
 end
 
-function placenote(degreein,curvelin)
+function placenote(degreein,curvelin,auxin)
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
   local curvel = tonumber(curvelin)
   local curinst = tonumber(renoise.song().selected_instrument_index)
+  local curaux = tonumber(auxin)
   
   print("degreein - place note")
   print(degreein)
@@ -292,9 +296,16 @@ function placenote(degreein,curvelin)
   
   chromatic_offset = renoise.song().transport.octave*12  
   
-  renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].note_value=degreein+chromatic_offset
-  renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].volume_value = curvel
-  renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].instrument_value = curinst
+  local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1]
+  
+  noteplacepos.note_value=degreein+chromatic_offset
+  noteplacepos.volume_value = curvel
+  noteplacepos.instrument_value = curinst
+  
+  if aux_place_enable == true then
+    renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].effect_columns[1].number_string = auxstr
+    renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].effect_columns[1].amount_value = curaux
+  end
   
   placenotebusy = false
   
@@ -647,8 +658,8 @@ function draw_window()
     end
   }
   
-  -- chooser 
-  local chooser_row = vb:row {
+  -- editstep chooser 
+  local editstepchooser_row = vb:row {
     vb:chooser {
       id = "chooser",
       value = 2,
@@ -660,6 +671,22 @@ function draw_window()
           global_edit_step = true
         else
           global_edit_step = false
+        end
+      end
+    }
+  }
+  
+  -- aux enable chooser 
+  local auxenable_row = vb:row {
+    vb:chooser {
+      id = "auxenable",
+      value = 2,
+      items = {"Aux Place - On", "Aux Place - Off"},
+      notifier = function(new_index)
+        if new_index == 1 then
+          aux_place_enable = true  
+        else
+          aux_place_enable = false
         end
       end
     }
@@ -860,7 +887,8 @@ function draw_window()
   dialog_content:add_child(file_row)
   menu_row:add_child(gen_button)
   dialog_content:add_child(menu_row)
-  dialog_content:add_child(chooser_row)
+  dialog_content:add_child(editstepchooser_row)
+  dialog_content:add_child(auxenable_row)
   
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
@@ -1058,7 +1086,7 @@ function draw_window()
     received_degree_info = getmatrixdegree(active_prime_type,active_prime_index,active_prime_degree)
       
     --place note
-    placenote(received_degree_info[1],received_degree_info[2])
+    placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4])
         
     if global_edit_step == false then            
       editstep_tmp = received_degree_info[3]
