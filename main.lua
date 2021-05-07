@@ -676,6 +676,17 @@ function draw_window()
     }
   }
   
+  local auxstr_tf = vb:textfield {
+      width = BUTTON_WIDTH,
+      height = BUTTON_HEIGHT/2,
+      align = "center",
+      text = "0M",
+      id = "Aux Prefix",
+      notifier = function(text)
+        auxstr = text
+      end
+  }
+  
   -- aux enable chooser 
   local auxenable_row = vb:row {
     vb:chooser {
@@ -888,6 +899,7 @@ function draw_window()
   menu_row:add_child(gen_button)
   dialog_content:add_child(menu_row)
   dialog_content:add_child(editstepchooser_row)
+  dialog_content:add_child(auxstr_tf)
   dialog_content:add_child(auxenable_row)
   
   dialog_content:add_child(degree_chroma_row)
