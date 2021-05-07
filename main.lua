@@ -49,14 +49,20 @@ local vel_inv_bool=false
 local editstep_inv_bool=false
 local aux_inv_bool=false
 
-local global_edit_step = false
+local global_edit_step = true
 
-local chromatic_inversion_axis = 4
+local chromatic_inversion_axis = 12
 local editstep_inversion_axis = 12
 
 local editstep_tmp = renoise.song().transport.edit_step
 
-local global_motif_length = 4
+local global_motif_length = 12
+
+local spraymodeactive = false
+
+local received_degree_info
+
+local placenotebusy = false
 
 local function generate_prime() 
     
@@ -172,6 +178,13 @@ end
 -- Helper Functions / API
 --------------------------------------------------------------------------------
 
+function delay(seconds)  
+   local init = os.clock()  
+   while init+seconds > os.clock() do  
+   -- nothing  
+   end  
+end  
+
 local function show_status(message)
   renoise.app():show_status(message)
   print(message)
@@ -266,11 +279,16 @@ local function coloractivedegree(primetype,primeindex,degree)
   
 end
 
-function placenote(degreein,curvel)
+function placenote(degreein,curvelin)
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
-  local curvel = tonumber(curvel)
+  local curvel = tonumber(curvelin)
   local curinst = tonumber(renoise.song().selected_instrument_index)
+  
+  print("degreein - place note")
+  print(degreein)
+  print("curvelin")
+  print(curvel)
   
   chromatic_offset = renoise.song().transport.octave*12  
   
@@ -278,6 +296,7 @@ function placenote(degreein,curvel)
   renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].volume_value = curvel
   renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1].instrument_value = curinst
   
+  placenotebusy = false
   
 end
 
@@ -616,6 +635,36 @@ function draw_window()
     end
   } 
   
+  
+  local gen_button = vb:button {
+    text = "Generate Random Prime",
+    tooltip = "Click to Generate Random Prime Serial Form",
+    notifier = function()
+      --local my_text_view = vb.views.prime_el_A
+      --my_text_view.text = "Button was hit."
+          
+      generate_prime()
+    end
+  }
+  
+  -- chooser 
+  local chooser_row = vb:row {
+    vb:chooser {
+      id = "chooser",
+      value = 2,
+      items = {"Global EditStep", "Per Note EditStep"},
+      notifier = function(new_index)
+        --print("new_index:")
+        --print(new_index)
+        if new_index == 1 then
+          global_edit_step = true
+        else
+          global_edit_step = false
+        end
+      end
+    }
+  }
+  
    local load_button = vb:button {
         text = "Load User Prime",
         tooltip = "Click to Calculate Matrix from User Prime",
@@ -811,7 +860,7 @@ function draw_window()
   dialog_content:add_child(file_row)
   menu_row:add_child(gen_button)
   dialog_content:add_child(menu_row)
-  
+  dialog_content:add_child(chooser_row)
   
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
@@ -1004,65 +1053,80 @@ function draw_window()
   
   local punch_row = vb:row{}
   
-  local punch_button = vb:button {
-              width = BUTTON_WIDTH*(global_motif_length/2+1),
-              height = BUTTON_HEIGHT/menu_button_scale,
-              text = "Punch",
-              id = "punchbutton",
-              notifier = function()
-
-                local received_degree
-
-                local received_degree_info = getmatrixdegree(active_prime_type,active_prime_index,active_prime_degree)
-                print(received_degree)
-                
-                --place note
-                placenote(received_degree_info[1],received_degree_info[2])
-
-
-  
-                if global_edit_step == false then            
-                  editstep_tmp = received_degree_info[3]
-                else
-                  editstep_tmp = renoise.song().transport.edit_step
-                end                 
-                  
-                  jumpbystep(editstep_tmp)
-                  
-                
-                renoise.app().window.active_middle_frame = renoise.ApplicationWindow.MIDDLE_FRAME_PATTERN_EDITOR
-                
-                active_prime_degree=active_prime_degree+1
-                
-                if(active_prime_degree==(global_motif_length+1)) then
-                  print('prime row complete')
-                  
-                  last_button_id = "punchbutton"
-                  view_input[active_prime_type..active_prime_index].color={0x22, 0xaa, 0x00}
-                  
-                  active_prime_degree=1
-                end
-                
-                coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
-              end
+  local function punchaction()
+     
+    received_degree_info = getmatrixdegree(active_prime_type,active_prime_index,active_prime_degree)
       
-            }
+    --place note
+    placenote(received_degree_info[1],received_degree_info[2])
+        
+    if global_edit_step == false then            
+      editstep_tmp = received_degree_info[3]
+    else
+      editstep_tmp = renoise.song().transport.edit_step
+    end                 
+      
+    jumpbystep(editstep_tmp)
+     
+    --renoise.app().window.active_middle_frame = renoise.ApplicationWindow.MIDDLE_FRAME_PATTERN_EDITOR
+    
+    active_prime_degree=active_prime_degree+1
+    
+    if(active_prime_degree==(global_motif_length+1)) then
+      print('prime row complete')
+      
+      last_button_id = "punchbutton"
+      view_input[active_prime_type..active_prime_index].color={0x22, 0xaa, 0x00}
+      
+      spraymodeactive=false
+      
+      active_prime_degree=1
+    end
+    
+    coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
+  end
+  
+  
+  local punch_button = vb:button {
+    width = BUTTON_WIDTH*(global_motif_length+2)/3,
+    height = BUTTON_HEIGHT/menu_button_scale,
+    text = "Punch",
+    id = "punchbutton",
+    notifier = function()
+      punchaction()      
+    end
+  
+  }
             
   local jumpdown_button = vb:button {
-              width = BUTTON_WIDTH*(global_motif_length/2+1),
-              height = BUTTON_HEIGHT/menu_button_scale,
-              text = "JumpDown by EditStep",
+    width = BUTTON_WIDTH*(global_motif_length+2)/3,
+    height = BUTTON_HEIGHT/menu_button_scale,
+    text = "Jump by EditStep",
+    
+    notifier = function()
+      local editstep_tmp = renoise.song().transport.edit_step
+      
+      jumpbystep(editstep_tmp)
+      
+      renoise.app().window.active_middle_frame = renoise.ApplicationWindow.MIDDLE_FRAME_PATTERN_EDITOR
+    end
+  }
+  
+  local spray_button = vb:button {
+    width = BUTTON_WIDTH*(global_motif_length+2)/3,
+    height = BUTTON_HEIGHT/menu_button_scale,
+    text = "Spray Row",
+    
+    notifier = function()
+       punchaction() 
+       punchaction() 
+       punchaction() 
+       punchaction() 
+    end
+  }
               
-              notifier = function()
-                local editstep_tmp = renoise.song().transport.edit_step
-                
-                jumpbystep(editstep_tmp)
-                
-                renoise.app().window.active_middle_frame = renoise.ApplicationWindow.MIDDLE_FRAME_PATTERN_EDITOR
-              end
-              }
-            
   punch_row:add_child(punch_button)
+  punch_row:add_child(spray_button)
   punch_row:add_child(jumpdown_button)   
   
   dialog_content:add_child(punch_row)
