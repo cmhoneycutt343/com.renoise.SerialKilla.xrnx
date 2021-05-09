@@ -599,7 +599,11 @@ function draw_window()
   
   end
   
-  local glbmotiflen_tf = vb:textfield {
+  local glbmotiflen_tf = vb:column{
+   vb:text{
+    text="Motif Len:"
+   },
+   vb:textfield {
       width = BUTTON_WIDTH,
       height = BUTTON_HEIGHT/2,
       align = "center",
@@ -607,8 +611,10 @@ function draw_window()
       id = "glbmotiflen",
       notifier = function(text)
         global_motif_length = tonumber(text)
+        chromatic_inversion_axis = tonumber(text)
         motiflen_chg()
       end
+  }
   }
   
 
@@ -687,7 +693,7 @@ function draw_window()
   file_row:add_child(loadfile_button)
 
   local gen_button = vb:button {
-    text = "Generate Random Prime",
+    text = "Generate 12-tone Prime",
     tooltip = "Click to Generate Random Prime Serial Form",
     notifier = function()
       --local my_text_view = vb.views.prime_el_A
@@ -727,20 +733,35 @@ function draw_window()
     }
   }
   
-  local auxstr_tf = vb:textfield {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/2,
-      align = "center",
-      text = "0M",
-      id = "Aux Prefix",
-      notifier = function(text)
-        auxstr = text
-      end
+  local auxstr_tf = vb:column {
+    vb:text{
+      text = "Aux FX Prefix:"
+    },
+    
+    vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = "0M",
+        id = "Aux Prefix",
+        notifier = function(text)
+          auxstr = text
+        end
+        }
   }
   
+  local aux_row = vb:row{}
+  local colspr1 = vb:column{width=20}
+  local colspr2 = vb:column{width=20}
+  local colspr3 = vb:column{width=20}
+  local colspr4 = vb:column{width=20}
+  
   -- aux enable chooser 
-  local auxenable_row = vb:row {
-    vb:chooser {
+  local auxenable_row = vb:vertical_aligner {
+    height = BUTTON_HEIGHT,
+    mode = "center",
+
+    vb:chooser {  
       id = "auxenable",
       value = 2,
       items = {"Aux Place - On", "Aux Place - Off"},
@@ -947,13 +968,26 @@ function draw_window()
   
   --dialog_content:add_child(settings_row)  
   
-  dialog_content:add_child(glbmotiflen_tf)
+  
   dialog_content:add_child(file_row)
   menu_row:add_child(gen_button)
-  dialog_content:add_child(menu_row)
-  dialog_content:add_child(editstepchooser_row)
-  dialog_content:add_child(auxenable_row)
-  dialog_content:add_child(auxstr_tf)
+  
+  if global_motif_length==12 then
+    dialog_content:add_child(menu_row)
+  end
+  
+  dialog_content:add_child(glbmotiflen_tf)
+
+  aux_row:add_child(auxenable_row)
+  aux_row:add_child(colspr1)
+  aux_row:add_child(auxstr_tf)
+  aux_row:add_child(colspr2)
+  aux_row:add_child(editstepchooser_row)
+  aux_row:add_child(colspr3)
+  
+  
+  dialog_content:add_child(aux_row)
+  
 
   
   dialog_content:add_child(degree_chroma_row)
