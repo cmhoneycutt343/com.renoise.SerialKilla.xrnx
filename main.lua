@@ -23,8 +23,8 @@ local test_mode = "true"
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
 
-local  current_prime_index = 0
-local  current_prime_val = 0
+local current_prime_index = 0
+local current_prime_val = 0
 
 local chromatic_offset = renoise.song().transport.octave*12
 
@@ -54,18 +54,22 @@ local aux_place_enable = false
 
 local auxstr="0M"
 
-local chromatic_inversion_axis = 12
-local editstep_inversion_axis = 12
+local chromatic_inversion_axis = 4
+local editstep_inversion_axis = 4
 
 local editstep_tmp = renoise.song().transport.edit_step
 
-local global_motif_length = 12
+local global_motif_length = 4
 
 local spraymodeactive = false
 
 local received_degree_info
 
 local placenotebusy = false
+
+local dialog_box_window
+
+local matrix_column = vb:column{id = "matrixchild"}
 
 local function generate_prime() 
     
@@ -128,6 +132,11 @@ function generate_matrix()
       local vel_loc = "deg_vel_in"..prime_index_col
       local aux_loc = "deg_aux_in"..prime_index_col
       local editstep_loc = "deg_editstep_in"..prime_index_col
+
+      print("generated_prime[prime_index_row]")
+      print(generated_prime[prime_index_row])
+      print("generated_prime[1]")
+      print(generated_prime[1])
 
       local degree_offset=(generated_prime[prime_index_row]-generated_prime[1])
       local vel_offset=view_input["deg_vel_in"..prime_index_row].text-view_input.deg_vel_in1.text
@@ -550,18 +559,33 @@ function draw_window()
   local menu_button_scale = 2
   local matrix_button_scale = 1
     
-    --[[
-    local reset_button = vb:button {
-        text = "Reset",
-        tooltip = "Click to Reset",
-        notifier = function()
-          --local my_text_view = vb.views.prime_el_A
-          --my_text_view.text = "Button was hit."
-              
-          draw_window()
-        end
-      }
-    --]]
+    
+    
+  local function motiflen_chg()
+    dialog_content:remove_child(matrix_column)
+    --matrix_column = nil
+    vb = renoise.ViewBuilder()
+    view_input = vb.views
+    matrix_column = vb:column{}
+    dialog_box_window:close()
+    draw_window()
+  
+  end
+  
+  local glbmotiflen_tf = vb:textfield {
+      width = BUTTON_WIDTH,
+      height = BUTTON_HEIGHT/2,
+      align = "center",
+      text = tostring(global_motif_length),
+      id = "glbmotiflen",
+      notifier = function(text)
+        global_motif_length = tonumber(text)
+        motiflen_chg()
+      end
+  }
+  
+
+    
    
   --base note stuff
   local base_note_txt = vb:text {
@@ -722,6 +746,8 @@ function draw_window()
   ----------------------------
   --per degree GUI
   ----------------------------    
+
+  
   local degree_chroma_row = vb:row {}
   local degree_vel_row = vb:row {}
   local degree_aux_row = vb:row {}
@@ -889,18 +915,19 @@ function draw_window()
   end
   
   -----------------------
-  --pre-matrix GUI
+  --pre-matrix GUI build
   -----------------------
   
   --dialog_content:add_child(settings_row)  
   
-  
+  dialog_content:add_child(glbmotiflen_tf)
   dialog_content:add_child(file_row)
   menu_row:add_child(gen_button)
   dialog_content:add_child(menu_row)
   dialog_content:add_child(editstepchooser_row)
-  dialog_content:add_child(auxstr_tf)
   dialog_content:add_child(auxenable_row)
+  dialog_content:add_child(auxstr_tf)
+
   
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
@@ -909,188 +936,205 @@ function draw_window()
   
   dialog_content:add_child(load_button)
   
-      
+  --------------------
   ------matrix GUI
-  for rowscan = 1,(global_motif_length+2) do
-    -- create a row for each rowscan
-    local rowscan_row = vb:row {}
-
-    for colscan = 1,(global_motif_length+2) do
-      
-      if ((rowscan==1)and(colscan==1))or((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
-        local colscan_button =vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT,
-          align = "center",
-          text = " "
-        }  
-        
-        rowscan_row:add_child(colscan_button)
+  --------------------
+ 
+  local function drawmatrixgui()
+  
     
-      elseif (colscan == 1) then
-      
-        local colscan_button = vb:button {
-              width = BUTTON_WIDTH,
-              height = BUTTON_HEIGHT,
-              text = "P"..tostring(rowscan-1),
-              id = "P"..tostring(rowscan-1),
-              
-              notifier = function(width)
-                active_prime_type="P"
-                active_prime_index=(rowscan-1)
-                active_prime_degree=1
-                
-                prime_but_fcn("P"..tostring(rowscan-1))
-                coloractivedegree("P",tostring(rowscan-1),1)
-              end
-      
-            }
-        rowscan_row:add_child(colscan_button)
-      elseif (colscan == (global_motif_length+2)) then
-      
-        local colscan_button = vb:button {
-              width = BUTTON_WIDTH,
-              height = BUTTON_HEIGHT,
-              text = "R"..tostring(rowscan-1),
-              id = "R"..tostring(rowscan-1),
-      
-              notifier = function()
-                active_prime_type="R"
-                active_prime_index=(rowscan-1)
-                active_prime_degree=1
-                
-                prime_but_fcn("R"..tostring(rowscan-1))
-                coloractivedegree("R",tostring(rowscan-1),1)
-              end
-      
-            }
-        rowscan_row:add_child(colscan_button)
-      elseif (rowscan == 1) then
-      
-        local rowscan_button = vb:button {
-              width = BUTTON_WIDTH,
-              height = BUTTON_HEIGHT,
-              text ="I"..tostring(colscan-1),
-              id ="I"..tostring(colscan-1),
-      
-              notifier = function()
-                active_prime_type="I"
-                active_prime_index=(colscan-1)
-                active_prime_degree=1
-              
-                prime_but_fcn("I"..tostring(colscan-1))
-                coloractivedegree("I",tostring(colscan-1),1)
-              end
-      
-            }
-        rowscan_row:add_child(rowscan_button)
-      elseif (rowscan == (global_motif_length+2)) then
-      
-        local rowscan_button = vb:button {
-              width = BUTTON_WIDTH,
-              height = BUTTON_HEIGHT,
-              text = "RI"..tostring(colscan-1),
-              id = "RI"..tostring(colscan-1),
-      
-              notifier = function()
-                active_prime_type="RI"
-                active_prime_index=(colscan-1)
-                active_prime_degree=1
-                
-                prime_but_fcn("RI"..tostring(colscan-1))
-                coloractivedegree("RI",tostring(colscan-1),1)
-              end
-      
-            }
-        rowscan_row:add_child(rowscan_button)
+       
+    for rowscan = 1,(global_motif_length+2) do
+      -- create a row for each rowscan
+      local rowscan_row = vb:row {}
+  
+      for colscan = 1,(global_motif_length+2) do
+        
+        if ((rowscan==1)and(colscan==1))or((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
+          local colscan_button =vb:text {
+            width = BUTTON_WIDTH,
+            height = BUTTON_HEIGHT,
+            align = "center",
+            text = " "
+          }  
           
-      else --indices are displayed here
-      ---matrix cell text fields
+          rowscan_row:add_child(colscan_button)
       
-      -----------
-      --
-      --------------
-      local cell_column = vb:column{
-        style = "panel",
-        id = "col"..tostring(rowscan-1).."_"..tostring(colscan-1),
-
-      }
-        local cell_row_top = vb:row {
-        width = BUTTON_WIDTH,
-
-      }
-      local cell_row_bottom = vb:row {
-        width = BUTTON_WIDTH,
-
-      }
-      
-      local chroma_val = vb:horizontal_aligner {
-        width = BUTTON_WIDTH/2,
-        mode = "left",
-        vb:text {
-          height = BUTTON_HEIGHT/2,
-          id = tostring(rowscan-1).."_"..tostring(colscan-1),
-          --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "N",
-          font = "big",
-          style = "strong",
-          align = "center"
-        },
-      }
-      
-      local vel_val = vb:horizontal_aligner {
-        width = BUTTON_WIDTH/2,
-        mode = "right",       
-        vb:text {
-          height = BUTTON_HEIGHT/2,
-          id = "vel"..tostring(rowscan-1).."_"..tostring(colscan-1),
-          --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "V",
-          align = "center"
-        },
-      }
-      
-      local step_val = vb:horizontal_aligner {
-        width = BUTTON_WIDTH/2,
-        mode = "left",
-        vb:text {
-          height = BUTTON_HEIGHT/3,
-          id = "step"..tostring(rowscan-1).."_"..tostring(colscan-1),
-          --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "S",
-          align = "center",
-        },
-      }
-      
-      local aux_val = vb:horizontal_aligner {
-        width = BUTTON_WIDTH/2,
-        mode = "right",
-        vb:text {
-          height = BUTTON_HEIGHT/3,
-          id = "aux"..tostring(rowscan-1).."_"..tostring(colscan-1),
-          --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
-          text = "A",
-          style = "disabled",
-          align = "left"
-        },
-      }
-      
-      cell_row_top:add_child(chroma_val)
-      cell_row_top:add_child(vel_val)
-      cell_row_bottom:add_child(step_val)
-      cell_row_bottom:add_child(aux_val)
-      cell_column:add_child(cell_row_top)
-      cell_column:add_child(cell_row_bottom)
-      rowscan_row:add_child(cell_column)
+        elseif (colscan == 1) then
+        
+          local colscan_button = vb:button {
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT,
+                text = "P"..tostring(rowscan-1),
+                id = "P"..tostring(rowscan-1),
+                
+                notifier = function(width)
+                  active_prime_type="P"
+                  active_prime_index=(rowscan-1)
+                  active_prime_degree=1
+                  
+                  prime_but_fcn("P"..tostring(rowscan-1))
+                  coloractivedegree("P",tostring(rowscan-1),1)
+                end
+        
+              }
+          rowscan_row:add_child(colscan_button)
+        elseif (colscan == (global_motif_length+2)) then
+        
+          local colscan_button = vb:button {
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT,
+                text = "R"..tostring(rowscan-1),
+                id = "R"..tostring(rowscan-1),
+        
+                notifier = function()
+                  active_prime_type="R"
+                  active_prime_index=(rowscan-1)
+                  active_prime_degree=1
+                  
+                  prime_but_fcn("R"..tostring(rowscan-1))
+                  coloractivedegree("R",tostring(rowscan-1),1)
+                end
+        
+              }
+          rowscan_row:add_child(colscan_button)
+        elseif (rowscan == 1) then
+        
+          local rowscan_button = vb:button {
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT,
+                text ="I"..tostring(colscan-1),
+                id ="I"..tostring(colscan-1),
+        
+                notifier = function()
+                  active_prime_type="I"
+                  active_prime_index=(colscan-1)
+                  active_prime_degree=1
+                
+                  prime_but_fcn("I"..tostring(colscan-1))
+                  coloractivedegree("I",tostring(colscan-1),1)
+                end
+        
+              }
+          rowscan_row:add_child(rowscan_button)
+        elseif (rowscan == (global_motif_length+2)) then
+        
+          local rowscan_button = vb:button {
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT,
+                text = "RI"..tostring(colscan-1),
+                id = "RI"..tostring(colscan-1),
+        
+                notifier = function()
+                  active_prime_type="RI"
+                  active_prime_index=(colscan-1)
+                  active_prime_degree=1
+                  
+                  prime_but_fcn("RI"..tostring(colscan-1))
+                  coloractivedegree("RI",tostring(colscan-1),1)
+                end
+        
+              }
+          rowscan_row:add_child(rowscan_button)
+            
+        else --indices are displayed here
+        ---matrix cell text fields
+        
+        -----------
+        --
+        --------------
+        local cell_column = vb:column{
+          style = "panel",
+          id = "col"..tostring(rowscan-1).."_"..tostring(colscan-1),
+  
+        }
+          local cell_row_top = vb:row {
+          width = BUTTON_WIDTH,
+  
+        }
+        local cell_row_bottom = vb:row {
+          width = BUTTON_WIDTH,
+  
+        }
+        
+        local chroma_val = vb:horizontal_aligner {
+          width = BUTTON_WIDTH/2,
+          mode = "left",
+          vb:text {
+            height = BUTTON_HEIGHT/2,
+            id = tostring(rowscan-1).."_"..tostring(colscan-1),
+            --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+            text = "N",
+            font = "big",
+            style = "strong",
+            align = "center"
+          },
+        }
+        
+        local vel_val = vb:horizontal_aligner {
+          width = BUTTON_WIDTH/2,
+          mode = "right",       
+          vb:text {
+            height = BUTTON_HEIGHT/2,
+            id = "vel"..tostring(rowscan-1).."_"..tostring(colscan-1),
+            --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+            text = "V",
+            align = "center"
+          },
+        }
+        
+        local step_val = vb:horizontal_aligner {
+          width = BUTTON_WIDTH/2,
+          mode = "left",
+          vb:text {
+            height = BUTTON_HEIGHT/3,
+            id = "step"..tostring(rowscan-1).."_"..tostring(colscan-1),
+            --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+            text = "S",
+            align = "center",
+          },
+        }
+        
+        local aux_val = vb:horizontal_aligner {
+          width = BUTTON_WIDTH/2,
+          mode = "right",
+          vb:text {
+            height = BUTTON_HEIGHT/3,
+            id = "aux"..tostring(rowscan-1).."_"..tostring(colscan-1),
+            --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+            text = "A",
+            style = "disabled",
+            align = "left"
+          },
+        }
+        
+        cell_row_top:add_child(chroma_val)
+        cell_row_top:add_child(vel_val)
+        cell_row_bottom:add_child(step_val)
+        cell_row_bottom:add_child(aux_val)
+        cell_column:add_child(cell_row_top)
+        cell_column:add_child(cell_row_bottom)
+        rowscan_row:add_child(cell_column)
+          
+        end
+        
         
       end
-      
-      
+  
+      --dialog_content:add_child(rowscan_row)
+        matrix_column:add_child(rowscan_row)  
     end
-
-    dialog_content:add_child(rowscan_row)
+    
+    dialog_content:add_child(matrix_column)
+    
   end
   
+  
+  drawmatrixgui() 
+  
+  -------------------------
+  ---post matrix GUI
+  ----------------------
   local punch_row = vb:row{}
   
   local function punchaction()
@@ -1107,8 +1151,7 @@ function draw_window()
     end                 
       
     jumpbystep(editstep_tmp)
-     
-    --renoise.app().window.active_middle_frame = renoise.ApplicationWindow.MIDDLE_FRAME_PATTERN_EDITOR
+
     
     active_prime_degree=active_prime_degree+1
     
@@ -1166,13 +1209,13 @@ function draw_window()
   }
               
   punch_row:add_child(punch_button)
-  punch_row:add_child(spray_button)
+  --punch_row:add_child(spray_button)
   punch_row:add_child(jumpdown_button)   
   
   dialog_content:add_child(punch_row)
 
-  renoise.app():show_custom_dialog(
-    "Batch Building Views", dialog_content)
+  dialog_box_window = renoise.app():show_custom_dialog(
+    "Serial Killa", dialog_content)
 
     if test_mode == "true" then
       set_test_vars()
