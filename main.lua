@@ -23,6 +23,24 @@ local test_mode = "true"
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
 
+local chromaref = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"}
+
+local notetochroma = {}
+notetochroma["c"] = 0
+notetochroma["c#"] = 1
+notetochroma["d"] = 2
+notetochroma["d#"] = 3
+
+notetochroma["e"] = 4
+notetochroma["f"] = 5
+notetochroma["f#"] = 6
+notetochroma["g"] = 7
+
+notetochroma["g#"] = 8
+notetochroma["a"] = 9
+notetochroma["a#"] = 10
+notetochroma["b"] = 11
+
 local current_prime_index = 0
 local current_prime_val = 0
 
@@ -36,8 +54,7 @@ local view_input = vb.views
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
 
-local last_button_id = "punchbutton"
-
+local last_button_id = "punchbutton"  
 local last_cell_id = "col1_1"
 
 local active_prime_type="P"
@@ -54,12 +71,12 @@ local aux_place_enable = false
 
 local auxstr="0M"
 
-local chromatic_inversion_axis = 4
+local chromatic_inversion_axis = 12
 local editstep_inversion_axis = 4
 
 local editstep_tmp = renoise.song().transport.edit_step
 
-local global_motif_length = 4
+local global_motif_length = 12
 
 local spraymodeactive = false
 
@@ -155,6 +172,9 @@ function generate_matrix()
       
       if note_inv_bool == true then
         view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%chromatic_inversion_axis)
+        
+        view_input[cell_id].text = chromaref[tonumber(view_input[cell_id].text)+1]
+        
       else
         local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         view_input[cell_id].text = callindex
@@ -291,12 +311,18 @@ local function coloractivedegree(primetype,primeindex,degree)
   
 end
 
-function placenote(degreein,curvelin,auxin)
+function placenote(notein,curvelin,auxin)
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
   local curvel = tonumber(curvelin)
-  local curinst = tonumber(renoise.song().selected_instrument_index)
+  local curinst = tonumber(renoise.song().selected_instrument_index-1)
   local curaux = tonumber(auxin)
+  local curcolumn = renoise.song().selected_note_column_index
+  
+  local degreein = notetochroma[notein]
+  
+  print("degreein")
+  print(degreein)
   
   print("degreein - place note")
   print(degreein)
@@ -305,7 +331,7 @@ function placenote(degreein,curvelin,auxin)
   
   chromatic_offset = renoise.song().transport.octave*12  
   
-  local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[1]
+  local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[curcolumn]
   
   noteplacepos.note_value=degreein+chromatic_offset
   noteplacepos.volume_value = curvel
@@ -557,10 +583,11 @@ function draw_window()
   local row_completed = false
   
   local menu_button_scale = 2
-  local matrix_button_scale = 1
-    
-    
-    
+  local matrix_button_scale = 1    
+   
+  last_button_id = "punchbutton"  
+  last_cell_id = "col1_1" 
+   
   local function motiflen_chg()
     dialog_content:remove_child(matrix_column)
     --matrix_column = nil
@@ -760,7 +787,7 @@ function draw_window()
           width = BUTTON_WIDTH,
           height = BUTTON_HEIGHT/menu_button_scale,
           align = "center",
-          text = "note:"
+          text = "degree:"
         }
       degree_chroma_row:add_child(tf_obj) 
     elseif (tfrowscan==(global_motif_length+2)) then
