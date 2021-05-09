@@ -25,6 +25,16 @@ local generated_prime = {}
 
 local chromaref = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"}
 
+local scale_chromatic = {0,1,2,3,4,5,6,7,8,9,10,11}
+local scale_major = {0,2,4,5,7,9,11}
+local scale_natminor = {0,2,3,5,7,8,10}
+local scale_harminor = {0,2,3,5,7,8,11}
+local scale_majorpent = {0,2,4,7,9}
+local scale_minorpent = {0,3,5,7,10}
+
+local scale_current = scale_chromatic
+local curscalelen = #scale_current
+
 local notetochroma = {}
 notetochroma["c"] = 0
 notetochroma["c#"] = 1
@@ -72,7 +82,7 @@ local aux_place_enable = false
 local auxstr="0M"
 
 local chromatic_inversion_axis = 12
-local editstep_inversion_axis = 4
+local editstep_inversion_axis = 12
 
 local editstep_tmp = renoise.song().transport.edit_step
 
@@ -173,11 +183,20 @@ function generate_matrix()
       if note_inv_bool == true then
         view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%chromatic_inversion_axis)
         
-        view_input[cell_id].text = chromaref[tonumber(view_input[cell_id].text)+1]
+        --gets scale degree index (0-scale length)
+        local chromaget = tonumber(view_input[cell_id].text)%(curscalelen)
+        
+        --converts to "note" string    
+        local notereturn = chromaref[scale_current[chromaget+1]+1] 
+                   
+        view_input[cell_id].text = notereturn
+       
         
       else
         local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         view_input[cell_id].text = callindex
+        
+        view_input[cell_id].text = chromaref[tonumber(view_input[cell_id].text)+1]
       end      
       
       if vel_inv_bool == true then
@@ -600,25 +619,58 @@ function draw_window()
   end
   
   local glbmotiflen_tf = vb:column{
-   vb:text{
-    text="Motif Len:"
-   },
-   vb:textfield {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/2,
-      align = "center",
-      text = tostring(global_motif_length),
-      id = "glbmotiflen",
-      notifier = function(text)
-        global_motif_length = tonumber(text)
-        chromatic_inversion_axis = tonumber(text)
-        motiflen_chg()
-      end
-  }
+    vb:text{
+      text="Motif Len:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(global_motif_length),
+        id = "glbmotiflen",
+        notifier = function(text)
+          global_motif_length = tonumber(text)
+          --chromatic_inversion_axis = tonumber(text)
+          motiflen_chg()
+        end
+    }
   }
   
-
-    
+  --inversion axis stuff
+  local axis_row = vb:row{} 
+  local chromaxis_tf = vb:column{
+    vb:text{
+      text="Chroma Inv Axis:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(chromatic_inversion_axis),
+        id = "chromainvaxis",
+        notifier = function(text)
+          chromatic_inversion_axis = tonumber(text)
+        end
+    }
+  }
+  
+  local axiscolspr1 = vb:column{width = 20}
+  
+  local editstepaxis_tf = vb:column{
+    vb:text{
+      text="EditStep Inv Axis:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(editstep_inversion_axis),
+        id = "edistepinvaxis",
+        notifier = function(text)
+          editstep_inversion_axis = tonumber(text)
+        end
+    }
+  }   
    
   --base note stuff
   local base_note_txt = vb:text {
@@ -679,7 +731,7 @@ function draw_window()
   local file_row = vb:row{}
   
   local loadfile_button = vb:button {
-    text = "Load . srl File",
+    text = "Load .srl File",
     tooltip = "Click to Load Serial Killa Preset",
     notifier = function()
       --local my_text_view = vb.views.prime_el_A
@@ -716,7 +768,8 @@ function draw_window()
   }
   
   -- editstep chooser 
-  local editstepchooser_row = vb:row {
+  local editstepchooser_row = vb:vertical_aligner {
+    mode="center",
     vb:chooser {
       id = "chooser",
       value = 2,
@@ -733,7 +786,8 @@ function draw_window()
     }
   }
   
-  local auxstr_tf = vb:column {
+  local auxstr_tf = vb:vertical_aligner{
+    mode = "center",
     vb:text{
       text = "Aux FX Prefix:"
     },
@@ -751,14 +805,13 @@ function draw_window()
   }
   
   local aux_row = vb:row{}
-  local colspr1 = vb:column{width=20}
+  local colspr1 = vb:column{width=20,height = BUTTON_HEIGHT*1.25}
   local colspr2 = vb:column{width=20}
   local colspr3 = vb:column{width=20}
   local colspr4 = vb:column{width=20}
   
   -- aux enable chooser 
   local auxenable_row = vb:vertical_aligner {
-    height = BUTTON_HEIGHT,
     mode = "center",
 
     vb:chooser {  
@@ -772,6 +825,40 @@ function draw_window()
           aux_place_enable = false
         end
       end
+    }
+  }
+  
+  -- popup 
+  local scale_popup = vb:column {
+    vb:text {
+      text = "Scale:"
+    },
+    vb:popup {
+      id = "scalepopup",
+      width = 100,
+      value = 1,
+      items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
+      notifier = function(new_index)
+        if new_index == 1 then
+          scale_current = scale_chromatic
+        elseif new_index == 2 then
+          scale_current = scale_major
+        elseif new_index == 3 then
+          scale_current = scale_natminor
+        elseif new_index == 4 then
+          scale_current = scale_harminor
+        elseif new_index == 5 then
+          scale_current = scale_majorpent
+        elseif new_index == 6 then
+          scale_current = scale_minorpent
+        end
+          --load scale length
+          curscalelen = #scale_current
+          
+          --set inversion axis
+          chromatic_inversion_axis = curscalelen
+          view_input.chromainvaxis.text = tostring(curscalelen)
+        end
     }
   }
   
@@ -978,23 +1065,25 @@ function draw_window()
   
   dialog_content:add_child(glbmotiflen_tf)
 
+  aux_row:add_child(editstepchooser_row)
+  aux_row:add_child(colspr3) 
   aux_row:add_child(auxenable_row)
   aux_row:add_child(colspr1)
   aux_row:add_child(auxstr_tf)
   aux_row:add_child(colspr2)
-  aux_row:add_child(editstepchooser_row)
-  aux_row:add_child(colspr3)
-  
-  
-  dialog_content:add_child(aux_row)
-  
+  aux_row:add_child(scale_popup)
 
-  
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
   dialog_content:add_child(degree_editstep_row)
   dialog_content:add_child(degree_aux_row)
+
   
+  axis_row:add_child(chromaxis_tf)
+  axis_row:add_child(axiscolspr1)
+  axis_row:add_child(editstepaxis_tf)
+  dialog_content:add_child(axis_row) 
+  dialog_content:add_child(aux_row)  
   dialog_content:add_child(load_button)
   
   --------------------
