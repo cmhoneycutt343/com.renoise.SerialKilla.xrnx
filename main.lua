@@ -51,6 +51,8 @@ notetochroma["a"] = 9
 notetochroma["a#"] = 10
 notetochroma["b"] = 11
 
+local globaltonic = "c";
+
 local current_prime_index = 0
 local current_prime_val = 0
 
@@ -809,6 +811,8 @@ function draw_window()
   local colspr2 = vb:column{width=20}
   local colspr3 = vb:column{width=20}
   local colspr4 = vb:column{width=20}
+  local colspr5 = vb:column{width=20}
+  local colspr6 = vb:column{width=20}
   
   -- aux enable chooser 
   local auxenable_row = vb:vertical_aligner {
@@ -828,39 +832,54 @@ function draw_window()
     }
   }
   
-  -- popup 
-  local scale_popup = vb:column {
-    vb:text {
-      text = "Scale:"
-    },
-    vb:popup {
-      id = "scalepopup",
-      width = 100,
-      value = 1,
-      items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
-      notifier = function(new_index)
-        if new_index == 1 then
-          scale_current = scale_chromatic
-        elseif new_index == 2 then
-          scale_current = scale_major
-        elseif new_index == 3 then
-          scale_current = scale_natminor
-        elseif new_index == 4 then
-          scale_current = scale_harminor
-        elseif new_index == 5 then
-          scale_current = scale_majorpent
-        elseif new_index == 6 then
-          scale_current = scale_minorpent
-        end
-          --load scale length
-          curscalelen = #scale_current
-          
-          --set inversion axis
-          chromatic_inversion_axis = curscalelen
-          view_input.chromainvaxis.text = tostring(curscalelen)
-        end
+    -- popup 
+    local scale_popup = vb:column {
+      vb:text {
+        text = "Scale:"
+      },
+      vb:popup {
+        id = "scalepopup",
+        width = 100,
+        value = 1,
+        items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
+        notifier = function(new_index)
+          if new_index == 1 then
+            scale_current = scale_chromatic
+          elseif new_index == 2 then
+            scale_current = scale_major
+          elseif new_index == 3 then
+            scale_current = scale_natminor
+          elseif new_index == 4 then
+            scale_current = scale_harminor
+          elseif new_index == 5 then
+            scale_current = scale_majorpent
+          elseif new_index == 6 then
+            scale_current = scale_minorpent
+          end
+            --load scale length
+            curscalelen = #scale_current
+            
+            --set inversion axis
+            chromatic_inversion_axis = curscalelen
+            view_input.chromainvaxis.text = tostring(curscalelen)
+          end
+      }
     }
-  }
+    
+    local tonic_popup = vb:column {
+      vb:text {
+        text = "Tonic:"
+      },
+      vb:popup {
+        id = "tonicpopup",
+        width = 100,
+        value = 1,
+        items = {"C","C#/Db","D","D#/Eb","E","F","F#/Gb","G","G#/Ab","A","A#/Bb","B"},
+        notifier = function(new_index)
+          globaltonic = new_index
+        end
+      }
+    }
   
    local load_button = vb:button {
         text = "Load User Prime",
@@ -1070,8 +1089,12 @@ function draw_window()
   aux_row:add_child(auxenable_row)
   aux_row:add_child(colspr1)
   aux_row:add_child(auxstr_tf)
+  aux_row:add_child(colspr4)
+  aux_row:add_child(tonic_popup)
   aux_row:add_child(colspr2)
   aux_row:add_child(scale_popup)
+
+  
 
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
