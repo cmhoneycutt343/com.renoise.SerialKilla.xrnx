@@ -152,6 +152,14 @@ local function generate_prime()
   --generate matrix from new prime
   generate_matrix()   
   
+  print("")
+  print(view_input["1_1"].width)
+  print(view_input.oct1_1.width)
+  print(view_input.vel1_1.width)
+  
+  
+  
+  
 end
 
 --loads chroma from textfields into matrix and generates
@@ -619,7 +627,7 @@ function draw_window()
 
   local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
 
-  local BUTTON_WIDTH = 2.7*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
+  local BUTTON_WIDTH = 3*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   local BUTTON_HEIGHT = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   
   local DEFAULT_DIALOG_MARGIN = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN
@@ -1197,74 +1205,103 @@ function draw_window()
         --------------
         local cell_column = vb:column{
           style = "panel",
-          id = "col"..tostring(rowscan-1).."_"..tostring(colscan-1),
-  
+          id = "col"..tostring(rowscan-1).."_"..tostring(colscan-1), 
+          
         }
-          local cell_row_top = vb:row {
-          width = BUTTON_WIDTH,
-  
+ 
+        local cell_row_top = vb:row {
+          
         }
+        
         local cell_row_bottom = vb:row {
-          width = BUTTON_WIDTH,
   
         }
         
-        local chroma_val = vb:horizontal_aligner {
-          width = BUTTON_WIDTH/2,
-          mode = "left",
+        local cell_top_algn = vb:horizontal_aligner {
+          width = BUTTON_WIDTH,
+          spacing = -5,
+          mode = "justify",
           vb:text {
+            width = 23,
             height = BUTTON_HEIGHT/2,
             id = tostring(rowscan-1).."_"..tostring(colscan-1),
             --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
             text = "N",
             font = "big",
             style = "strong",
-            align = "center"
+            align = "left"
           },
-        }
-        
-        local vel_val = vb:horizontal_aligner {
-          width = BUTTON_WIDTH/2,
-          mode = "right",       
           vb:text {
+            width = 18,
+            height = BUTTON_HEIGHT/2,
+            id = "oct"..tostring(rowscan-1).."_"..tostring(colscan-1),
+            text = "2",
+            style = "disabled",
+            align = "left"
+          },
+          vb:text {
+            width = 22,
             height = BUTTON_HEIGHT/2,
             id = "vel"..tostring(rowscan-1).."_"..tostring(colscan-1),
             --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
             text = "V",
-            align = "center"
+            align = "right"
           },
         }
         
-        local step_val = vb:horizontal_aligner {
-          width = BUTTON_WIDTH/2,
-          mode = "left",
+        local cell_btm_algn = vb:horizontal_aligner {
+          width = BUTTON_WIDTH,
+
+          mode = "justify",
           vb:text {
             height = BUTTON_HEIGHT/3,
             id = "step"..tostring(rowscan-1).."_"..tostring(colscan-1),
             --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
             text = "S",
-            align = "center",
+            --align = "left",
           },
-        }
-        
-        local aux_val = vb:horizontal_aligner {
-          width = BUTTON_WIDTH/2,
-          mode = "right",
           vb:text {
             height = BUTTON_HEIGHT/3,
             id = "aux"..tostring(rowscan-1).."_"..tostring(colscan-1),
             --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
             text = "A",
             style = "disabled",
-            align = "left"
+            align = "right"
           },
         }
         
+        --[[
+        local step_val = vb:row {
+          --width = BUTTON_WIDTH/2,
+          --mode = "left",
+          vb:text {
+            height = BUTTON_HEIGHT/3,
+            id = "step"..tostring(rowscan-1).."_"..tostring(colscan-1),
+            --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+            text = "S",
+            align = "left",
+          },
+        }
+        
+        local aux_val = vb:row {
+          --width = BUTTON_WIDTH/2,
+          --mode = "right",
+          vb:text {
+            height = BUTTON_HEIGHT/3,
+            id = "aux"..tostring(rowscan-1).."_"..tostring(colscan-1),
+            --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
+            text = "A",
+            style = "disabled",
+            align = "right"
+          },
+        }--]]
+        
         --construct 'degree cell'
-        cell_row_top:add_child(chroma_val)
-        cell_row_top:add_child(vel_val)
-        cell_row_bottom:add_child(step_val)
-        cell_row_bottom:add_child(aux_val)
+
+        cell_row_top:add_child(cell_top_algn)
+        --cell_row_top:add_child(vel_val)
+        --cell_row_bottom:add_child(step_val)
+        cell_row_bottom:add_child(cell_btm_algn)
         cell_column:add_child(cell_row_top)
         cell_column:add_child(cell_row_bottom)
         
