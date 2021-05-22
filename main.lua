@@ -20,11 +20,14 @@ rprint("Run Serial Killa 2")
 local test_mode = "true"
 ----------------------------
 
+--initialized 12 tone prime
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
 
+--indexable note names
 local chromaref = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"}
 
+--indexable scales
 local scale_chromatic = {0,1,2,3,4,5,6,7,8,9,10,11}
 local scale_major = {0,2,4,5,7,9,11}
 local scale_natminor = {0,2,3,5,7,8,10}
@@ -32,9 +35,11 @@ local scale_harminor = {0,2,3,5,7,8,11}
 local scale_majorpent = {0,2,4,7,9}
 local scale_minorpent = {0,3,5,7,10}
 
+--sets default scale
 local scale_current = scale_chromatic
 local curscalelen = #scale_current
 
+--table for converting note names back to chroma index
 local notetochroma = {}
 notetochroma["c"] = 0
 notetochroma["c#"] = 1
@@ -51,28 +56,34 @@ notetochroma["a"] = 9
 notetochroma["a#"] = 10
 notetochroma["b"] = 11
 
+--global tonic
 local globaltonic = "c";
 
+--indexing variables for generating 12 tone prime
 local current_prime_index = 0
 local current_prime_val = 0
 
+--octave offset
 local chromatic_offset = renoise.song().transport.octave*12
 
+--'spray' editstep (currently unused)
 local spray_spacing = 6
 
+--view objects
 local vb = renoise.ViewBuilder()
 local view_input = vb.views
+local dialog_box_window
 
-local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
-local generated_prime = {}
-
+--default button references
 local last_button_id = "punchbutton"  
 local last_cell_id = "col1_1"
 
+--default prime references
 local active_prime_type="P"
 local active_prime_index=1
 local active_prime_degree=1
 
+--defaults for menu control
 local note_inv_bool=true
 local vel_inv_bool=false
 local editstep_inv_bool=false
@@ -96,51 +107,54 @@ local received_degree_info
 
 local placenotebusy = false
 
-local dialog_box_window
-
+--column to hold generated matrix and buttons (for redraw)
 local matrix_column = vb:column{id = "matrixchild"}
 
+------------------------------------------
+--[[function to generate 12 tone prime]]--
+------------------------------------------
 local function generate_prime() 
-    
-  initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
-  generated_prime = {}
 
+  --error against motifs not of length 12
   if global_motif_length ~= 12 then
     error("Motif length must be 12 for a 12 tone prime")
   end
-  
-  local  current_prime_index = 0
+    
+  --reinitialize prime values  
+  initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
+  generated_prime = {}
+    local  current_prime_index = 0
   local  current_prime_val = 0
   
+  --generates 12 tone randomized prime
   for prime_gen_index = 1,12 do
-    --rprint(initialized_prime[prime_gen_index])
+    
      --generate a random index
      current_prime_index=math.random(1,13-prime_gen_index)
      
-     rprint(initialized_prime[current_prime_index])     
+     --get the prime value     
      current_prime_val=initialized_prime[current_prime_index]
      
+     --remove that prime value from list of remaining available chroma
      table.remove(initialized_prime,current_prime_index)
      
+     --add prime to newly generated from list 
      table.insert(generated_prime,current_prime_val)
-     
-     --[[
-     renoise.song().patterns[19].tracks[4].lines[spray_spacing*(prime_gen_index)-(spray_spacing-1)].note_columns[1].note_value=current_prime_val+chromatic_offset
-     renoise.song().patterns[19].tracks[4].lines[spray_spacing*(prime_gen_index)-(spray_spacing-1)].note_columns[1].instrument_string='01'     
-    ]]--
-    
-    for prime_index_col = 1,12 do
-      local tf_in = "prime_in"..tostring(prime_index_col)
-      view_input[tf_in].text = tostring(generated_prime[prime_index_col])
-    end 
-
       
   end
-
+  
+  --load new prime into text fields
+  for prime_index_col = 1,12 do
+      local tf_in = "prime_in"..tostring(prime_index_col)
+      view_input[tf_in].text = tostring(generated_prime[prime_index_col])
+  end
+  
+  --generate matrix from new prime
   generate_matrix()   
   
 end
 
+--loads chroma from textfields into matrix and generates
 function load_custom_prime()
   for prime_index_col = 1,global_motif_length do
       local tf_in = "prime_in"..tostring(prime_index_col)
@@ -149,70 +163,78 @@ function load_custom_prime()
    generate_matrix()
 end
 
+
+--[[Complextion Matrix Generation Logic]]--
 function generate_matrix()
+  
+  --for each column
   for prime_index_col = 1,global_motif_length do
+    --for each row
     for prime_index_row = 1,global_motif_length do
     
+      --cell reference prefixes
       local cell_id = tostring(prime_index_row).."_"..tostring(prime_index_col)
       local cell_id_vel = "vel"..cell_id
       local cell_id_aux = "aux"..cell_id
       local cell_id_editstep = "step"..cell_id
 
+      --column based 
       local vel_loc = "deg_vel_in"..prime_index_col
       local aux_loc = "deg_aux_in"..prime_index_col
       local editstep_loc = "deg_editstep_in"..prime_index_col
 
-      print("generated_prime[prime_index_row]")
-      print(generated_prime[prime_index_row])
-      print("generated_prime[1]")
-      print(generated_prime[1])
-
+      --inversion offset based on value of first degree, velocity
       local degree_offset=(generated_prime[prime_index_row]-generated_prime[1])
       local vel_offset=view_input["deg_vel_in"..prime_index_row].text-view_input.deg_vel_in1.text
       local aux_offset=view_input["deg_aux_in"..prime_index_row].text-view_input.deg_aux_in1.text
       local editstep_offset=view_input["deg_editstep_in"..prime_index_row].text-view_input.deg_editstep_in1.text
       
+      --current values from textfields
       local curvel = tostring(view_input[vel_loc].text)
       local curaux = tostring(view_input[aux_loc].text)
       local cureditstep = tostring(view_input[editstep_loc].text)
-            
-      --print("view_input["..vel_loc.."].text")
-      --print(tostring(view_input[vel_loc].text))
       
       --inversion logic
       local rot_index = (prime_index_col+prime_index_row-2)%global_motif_length+1
       
+      --if note inversion activated...
       if note_inv_bool == true then
+        
+        --incorporates scale inversion axis, offset, and degree from motif
         view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%chromatic_inversion_axis)
         
         --gets scale degree index (0-scale length)
         local chromaget = tonumber(view_input[cell_id].text)%(curscalelen)
         
-        --converts to "note" string    
-        local notereturn = chromaref[scale_current[chromaget+1]+1] 
-                   
+        --converts to "note" string and loads to text field
+        local notereturn = chromaref[scale_current[chromaget+1]+1]
         view_input[cell_id].text = notereturn
-       
-        
+      
+      --if note inversion not activated...  
       else
+        --gets chroma index   
         local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         view_input[cell_id].text = callindex
         
+        --converts to "note" string 
         view_input[cell_id].text = chromaref[tonumber(view_input[cell_id].text)+1]
       end      
       
+      --velocity inversion or not
       if vel_inv_bool == true then
         view_input[cell_id_vel].text = tostring((view_input[vel_loc].text-vel_offset)%127)
       else
         view_input[cell_id_vel].text = view_input["deg_vel_in"..rot_index].text
       end
       
+      --auxilary inversion or not
       if aux_inv_bool == true then
         view_input[cell_id_aux].text = tostring((view_input[aux_loc].text-aux_offset)%127)
       else
         view_input[cell_id_aux].text = view_input["deg_aux_in"..rot_index].text
       end
       
+      --editstep inversion or not
       if editstep_inv_bool == true then
         view_input[cell_id_editstep].text = tostring((view_input[editstep_loc].text-editstep_offset)%editstep_inversion_axis)
       else
@@ -221,8 +243,8 @@ function generate_matrix()
     end
   end
 
+  --recolors punch button????
   local buttonname = "punchbutton"
- 
   view_input[buttonname].color = {0x00, 0x00, 0x00}
 end
 
@@ -231,31 +253,28 @@ end
 -- Helper Functions / API
 --------------------------------------------------------------------------------
 
-function delay(seconds)  
-   local init = os.clock()  
-   while init+seconds > os.clock() do  
-   -- nothing  
-   end  
-end  
-
 local function show_status(message)
   renoise.app():show_status(message)
   print(message)
 end
 
+--adds SerialKilla to keyboard shortcuts
 renoise.tool():add_keybinding {
     name = "Global:Tools:Serial Killa",
     invoke = function() draw_window() end
   }
 
-local function getmatrixdegree(primetype,primeindex,degree)
+-------------------------------
+--[[gets chroma from matrix]]-- 
+-------------------------------
+local function retreivecellattribs(primetype,primeindex,degree)
   
   local row_index
   local col_index
-  
   local fetched_degree
+  local degreeinfo = {}
   
-  
+  --set row / column index based on prime type
   if primetype==("P") then
      col_index=degree
      row_index=primeindex
@@ -273,20 +292,17 @@ local function getmatrixdegree(primetype,primeindex,degree)
     return
   end
   
+  --recall cell id from row and column
   local mat_cell_id = tostring(row_index).."_"..tostring(col_index)
-
-  print(mat_cell_id)
-  print(view_input[mat_cell_id].text)
   
-  local degreeinfo = {}
-  
+  --add relevant data to buffer table
   table.insert(degreeinfo,view_input[mat_cell_id].text)
   table.insert(degreeinfo,view_input["vel"..mat_cell_id].text)
   table.insert(degreeinfo,view_input["step"..mat_cell_id].text)
   table.insert(degreeinfo,view_input["aux"..mat_cell_id].text)
   
-  return degreeinfo
-  
+  --return data
+  return degreeinfo 
 end
 
 local function prime_but_fcn(button_id)
@@ -1312,7 +1328,7 @@ function draw_window()
   
   local function punchaction()
      
-    received_degree_info = getmatrixdegree(active_prime_type,active_prime_index,active_prime_degree)
+    received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,active_prime_degree)
       
     --place note
     placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4])
