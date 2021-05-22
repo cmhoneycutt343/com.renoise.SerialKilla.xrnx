@@ -305,22 +305,26 @@ local function retreivecellattribs(primetype,primeindex,degree)
   return degreeinfo 
 end
 
-local function prime_but_fcn(button_id)
-  print("button_id")
+--colors active prime button and resets last button
+local function active_primebut_clr(button_id)
   
+  --reset last button color
   view_input[last_button_id].color={0,0,0}
  
+  --color current button green
   view_input[button_id].color={0x22, 0xaa, 0xff}
   
+  --set current button to set button
   last_button_id = button_id
 end
 
+--colors next 'prime' box for punchin
 local function coloractivedegree(primetype,primeindex,degree)
 
   local row_index
   local col_index
- 
 
+  --set row / column index based on prime type
   if primetype==("P") then
      col_index=degree
      row_index=primeindex
@@ -338,17 +342,23 @@ local function coloractivedegree(primetype,primeindex,degree)
     return
   end
   
+  --resets last degree box 
   view_input[last_cell_id].style = "panel"
-
+  
+  --colors current degree box
   local cell_id = "col"..tostring(row_index).."_"..tostring(col_index)
   print(cell_id)
   view_input[cell_id].style = "plain"
   
+  --sets current box to last box
   last_cell_id = cell_id
-  
 end
 
+-------------------------------------------------
+--[[function that draws note into pattern seq]]--
+-------------------------------------------------
 function placenote(notein,curvelin,auxin)
+  --
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
   local curvel = tonumber(curvelin)
@@ -356,43 +366,42 @@ function placenote(notein,curvelin,auxin)
   local curaux = tonumber(auxin)
   local curcolumn = renoise.song().selected_note_column_index
   
-  local degreein = notetochroma[notein]
+  --gets chroma index
+  local degreein = notetochroma[notein] 
   
-  print("degreein")
-  print(degreein)
-  
-  print("degreein - place note")
-  print(degreein)
-  print("curvelin")
-  print(curvel)
-  
+  --gets octave offset from GUI
   chromatic_offset = renoise.song().transport.octave*12  
   
+  --variable for place to write in pattern seq
   local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[curcolumn]
   
+  --write to pattern seq
   noteplacepos.note_value=degreein+chromatic_offset
   noteplacepos.volume_value = curvel
   noteplacepos.instrument_value = curinst
-  
+
+  --if aux place is enable  
   if aux_place_enable == true then
     renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].effect_columns[1].number_string = auxstr
     renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].effect_columns[1].amount_value = curaux
   end
   
-  placenotebusy = false
+  --placenotebusy = false
   
 end
 
+--jump by editstep
 function jumpbystep(manualeditstep)
+    --get pattern cursor position
     local tmp_pos = renoise.song().transport.edit_pos
     tmp_pos.global_line_index = tmp_pos.global_line_index + manualeditstep
+    --move pattern cursor
     renoise.song().transport.edit_pos = tmp_pos
-
 end
 
-------------------
---global line index API expansion (special thanks to user "Joule" <333
-------------------
+----------------------------------------------------------------------------
+--[[global line index API expansion (special thanks to user "Joule" <333]]--
+----------------------------------------------------------------------------
 renoise.SongPos.global_line_index = property(
   function(obj)
     local lines_amt, song = 0, renoise.song()
@@ -521,38 +530,45 @@ end --of load file in bytes to table
 
 --[[dataload_in = load_file_in_bytes_to_table({"*.srl"},"Choose a .srl SerialKilla File")]]--
 
---[[
-dataparse1 = {}
-for s in dataload_in:gmatch("[^\r\n]+") do
-    table.insert(lines, s)
-end
---]]
+--parser datat buffers / index
 
+--table whose elements are each lists of options, attribute, etc
 local parsed_data = {}
+--buffer for elements of parsed_data
 local parse_stringbuf = ""
 local parsed_index = 1
 local byte_buffer
 local dataload_in
 
+-------------------------
+--[[input file parser]]--
+-------------------------
 local function file_parser()
   
+  --for all bytes loaded from file/////
   for s = 1, #dataload_in do
     
+    --convert current byte to hex 
     local current_byte = string.byte(dataload_in[s])
+    --hole current byte as string
     byte_buffer = dataload_in[s]
-    --print(current_byte)
     
+    --if 'line feed (10)' byte
     if current_byte == 10 then
+      --write compiled data field into single 'parsed_data' field
       parsed_data[parsed_index] = parse_stringbuf
+      --increment index and reinitialize buffer
       parsed_index = parsed_index+1
       parse_stringbuf = ""
     else
+      --concatenate bytes until 'line feed' found
       parse_stringbuf = parse_stringbuf..byte_buffer
     end
   end
   
   local prsinc = 1
-  
+ 
+  ---load parsed_data into text fields   
   for s in parsed_data[1]:gmatch("[^\r,]+") do
     local tf_in = "prime_in"..tostring(prsinc)
     view_input[tf_in].text = s
@@ -585,24 +601,21 @@ local function file_parser()
   
 end
 
-
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 -- GUI
 --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
+--add SerialKilla to menu
 renoise.tool():add_menu_entry {
   name = "Main Menu:Tools:Serial Killa",
   invoke = function() draw_window() end 
 }
 
 function draw_window()
-   -- as shown in dynamic_content(), you can build views either in the "nested"
-  -- notation, or "by hand". You can of course also combine both ways, for 
-  -- example if you want to dynamically build equally behaving view "blocks"
-
-  -- here is a simple example that creates a colscan-rowscan-matrix with buttons
-
- 
 
   local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
 
@@ -611,7 +624,8 @@ function draw_window()
   
   local DEFAULT_DIALOG_MARGIN = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN
   local DEFAULT_CONTROL_SPACING = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING
-    
+  
+  --all gui content  
   local dialog_content = vb:column {}
   
   local settings_row = vb:row {}
@@ -621,21 +635,84 @@ function draw_window()
   
   local menu_button_scale = 2
   local matrix_button_scale = 1    
-   
+  
+  --button defaults 
   last_button_id = "punchbutton"  
   last_cell_id = "col1_1" 
-   
+  
+  -------------------------------------------
+  --function for when motif length is changed
+  -------------------------------------------
   local function motiflen_chg()
+    --remove matrix from gui
     dialog_content:remove_child(matrix_column)
-    --matrix_column = nil
+    
+    --make new vb object instances
     vb = renoise.ViewBuilder()
     view_input = vb.views
     matrix_column = vb:column{}
+    
+    --close then reopen window
     dialog_box_window:close()
     draw_window()
-  
   end
   
+  ---------------
+  ---File buttons
+  ---------------
+  local file_row = vb:row{}
+  
+  local loadfile_button = vb:button {
+    text = "Load .srl File",
+    tooltip = "Click to Load Serial Killa Preset",
+    notifier = function()
+      --local my_text_view = vb.views.prime_el_A
+      --my_text_view.text = "Button was hit."
+          
+      dataload_in = load_file_in_bytes_to_table({"*.srl"},"Choose a .srl SerialKilla File")
+      file_parser()
+    end
+  }
+  
+  local savefile_button = vb:button {
+    text = "Save .srl File",
+    tooltip = "Click to Save Serial Killa Preset",
+    notifier = function()
+      
+    end
+  }
+
+  local gen_button = vb:button {
+    text = "Generate 12-tone Prime",
+    tooltip = "Click to Generate Random Prime Serial Form",
+    notifier = function()
+      --local my_text_view = vb.views.prime_el_A
+      --my_text_view.text = "Button was hit."
+          
+      generate_prime()
+    end
+  }
+  
+  file_row:add_child(loadfile_button) 
+  file_row:add_child(savefile_button) 
+  
+  ------------------------
+  ---Generate random Prime
+  ------------------------  
+  local gen_button = vb:button {
+    text = "Generate Random Prime",
+    tooltip = "Click to Generate Random Prime Serial Form",
+    notifier = function()
+      --local my_text_view = vb.views.prime_el_A
+      --my_text_view.text = "Button was hit."
+          
+      generate_prime()
+    end
+  }
+  
+  -------------------------------
+  --global motif length textfield
+  -------------------------------
   local glbmotiflen_tf = vb:column{
     vb:text{
       text="Motif Len:"
@@ -654,270 +731,11 @@ function draw_window()
     }
   }
   
-  --inversion axis stuff
-  local axis_row = vb:row{} 
-  local chromaxis_tf = vb:column{
-    vb:text{
-      text="Chroma Inv Axis:"
-     },
-     vb:textfield {
-        width = BUTTON_WIDTH,
-        height = BUTTON_HEIGHT/2,
-        align = "center",
-        text = tostring(chromatic_inversion_axis),
-        id = "chromainvaxis",
-        notifier = function(text)
-          chromatic_inversion_axis = tonumber(text)
-        end
-    }
-  }
-  
-  local axiscolspr1 = vb:column{width = 20}
-  
-  local editstepaxis_tf = vb:column{
-    vb:text{
-      text="EditStep Inv Axis:"
-     },
-     vb:textfield {
-        width = BUTTON_WIDTH,
-        height = BUTTON_HEIGHT/2,
-        align = "center",
-        text = tostring(editstep_inversion_axis),
-        id = "edistepinvaxis",
-        notifier = function(text)
-          editstep_inversion_axis = tonumber(text)
-        end
-    }
-  }   
-   
-  --base note stuff
-  local base_note_txt = vb:text {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/4,
-      align = "center",
-      text = "Base Note:"
-  }
-    
-  local base_note_num = vb:textfield {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/4,
-      align = "center",
-      text = "60",
-      id = "base_note_num",
-      notifier = function(text)
-        rprint(text)
-      end
-  }
-              
-  local base_vel_txt = vb:text {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/menu_button_scale,
-      align = "center",
-      text = "Base Vel:"
-  }
-    
-  local base_vel_num = vb:textfield {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/menu_button_scale,
-      align = "center",
-      text = "126",
-      id = "base_vel_num",
-      notifier = function(text)
-        rprint(text)
-      end
-  }   
-      
-  local base_inst_txt = vb:text {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/menu_button_scale,
-      align = "center",
-      text = "inst #:"
-  }
-    
-  local base_inst_num = vb:textfield {
-      width = BUTTON_WIDTH,
-      height = BUTTON_HEIGHT/menu_button_scale,
-      align = "center",
-      text = "0",
-      id = "base_inst_num",
-      notifier = function(text)
-        rprint(text)
-      end
-  }
-      
-  ---buttons
-  local file_row = vb:row{}
-  
-  local loadfile_button = vb:button {
-    text = "Load .srl File",
-    tooltip = "Click to Load Serial Killa Preset",
-    notifier = function()
-      --local my_text_view = vb.views.prime_el_A
-      --my_text_view.text = "Button was hit."
-          
-      dataload_in = load_file_in_bytes_to_table({"*.srl"},"Choose a .srl SerialKilla File")
-      file_parser()
-    end
-  }
-
-  file_row:add_child(loadfile_button)
-
-  local gen_button = vb:button {
-    text = "Generate 12-tone Prime",
-    tooltip = "Click to Generate Random Prime Serial Form",
-    notifier = function()
-      --local my_text_view = vb.views.prime_el_A
-      --my_text_view.text = "Button was hit."
-          
-      generate_prime()
-    end
-  } 
-  
-  
-  local gen_button = vb:button {
-    text = "Generate Random Prime",
-    tooltip = "Click to Generate Random Prime Serial Form",
-    notifier = function()
-      --local my_text_view = vb.views.prime_el_A
-      --my_text_view.text = "Button was hit."
-          
-      generate_prime()
-    end
-  }
-  
-  -- editstep chooser 
-  local editstepchooser_row = vb:vertical_aligner {
-    mode="center",
-    vb:chooser {
-      id = "chooser",
-      value = 2,
-      items = {"Global EditStep", "Per Note EditStep"},
-      notifier = function(new_index)
-        --print("new_index:")
-        --print(new_index)
-        if new_index == 1 then
-          global_edit_step = true
-        else
-          global_edit_step = false
-        end
-      end
-    }
-  }
-  
-  local auxstr_tf = vb:vertical_aligner{
-    mode = "center",
-    vb:text{
-      text = "Aux FX Prefix:"
-    },
-    
-    vb:textfield {
-        width = BUTTON_WIDTH,
-        height = BUTTON_HEIGHT/2,
-        align = "center",
-        text = "0M",
-        id = "Aux Prefix",
-        notifier = function(text)
-          auxstr = text
-        end
-        }
-  }
-  
-  local aux_row = vb:row{}
-  local colspr1 = vb:column{width=20,height = BUTTON_HEIGHT*1.25}
-  local colspr2 = vb:column{width=20}
-  local colspr3 = vb:column{width=20}
-  local colspr4 = vb:column{width=20}
-  local colspr5 = vb:column{width=20}
-  local colspr6 = vb:column{width=20}
-  
-  -- aux enable chooser 
-  local auxenable_row = vb:vertical_aligner {
-    mode = "center",
-
-    vb:chooser {  
-      id = "auxenable",
-      value = 2,
-      items = {"Aux Place - On", "Aux Place - Off"},
-      notifier = function(new_index)
-        if new_index == 1 then
-          aux_place_enable = true  
-        else
-          aux_place_enable = false
-        end
-      end
-    }
-  }
-  
-    -- popup 
-    local scale_popup = vb:column {
-      vb:text {
-        text = "Scale:"
-      },
-      vb:popup {
-        id = "scalepopup",
-        width = 100,
-        value = 1,
-        items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
-        notifier = function(new_index)
-          if new_index == 1 then
-            scale_current = scale_chromatic
-          elseif new_index == 2 then
-            scale_current = scale_major
-          elseif new_index == 3 then
-            scale_current = scale_natminor
-          elseif new_index == 4 then
-            scale_current = scale_harminor
-          elseif new_index == 5 then
-            scale_current = scale_majorpent
-          elseif new_index == 6 then
-            scale_current = scale_minorpent
-          end
-            --load scale length
-            curscalelen = #scale_current
-            
-            --set inversion axis
-            chromatic_inversion_axis = curscalelen
-            view_input.chromainvaxis.text = tostring(curscalelen)
-          end
-      }
-    }
-    
-    local tonic_popup = vb:column {
-      vb:text {
-        text = "Tonic:"
-      },
-      vb:popup {
-        id = "tonicpopup",
-        width = 100,
-        value = 1,
-        items = {"C","C#/Db","D","D#/Eb","E","F","F#/Gb","G","G#/Ab","A","A#/Bb","B"},
-        notifier = function(new_index)
-          globaltonic = new_index
-        end
-      }
-    }
-  
-   local load_button = vb:button {
-        text = "Load User Prime",
-        tooltip = "Click to Calculate Matrix from User Prime",
-        notifier = function()
-          --local my_text_view = vb.views.prime_el_A
-          --my_text_view.text = "Button was hit."
-
-          load_custom_prime()
-        end
-  }
-
-  settings_row:add_child(base_vel_txt)
-  settings_row:add_child(base_vel_num)
-  settings_row:add_child(base_inst_txt)
-  settings_row:add_child(base_inst_num)     
-  
   ----------------------------
-  --per degree GUI
+  ----------------------------
+  --per degree GUI textfields
   ----------------------------    
-
-  
+  ----------------------------
   local degree_chroma_row = vb:row {}
   local degree_vel_row = vb:row {}
   local degree_aux_row = vb:row {}
@@ -934,14 +752,7 @@ function draw_window()
         }
       degree_chroma_row:add_child(tf_obj) 
     elseif (tfrowscan==(global_motif_length+2)) then
-      --[[
-      local tf_obj =vb:text {
-          width = BUTTON_WIDTH,
-          height = BUTTON_HEIGHT/menu_button_scale,
-          align = "center",
-          text = " "
-        }
-      ]]--
+
       local tf_obj = vb:row{}
       
       local note_inv_bool = vb:checkbox {
@@ -1084,18 +895,178 @@ function draw_window()
     end
   end
   
-  -----------------------
-  --pre-matrix GUI build
-  -----------------------
+  ----------------------
+  ---menu options-------
+  ----------------------
+
+  --inversion axis stuff
+  local axis_row = vb:row{} 
+  local chromaxis_tf = vb:column{
+    vb:text{
+      text="Chroma Inv Axis:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(chromatic_inversion_axis),
+        id = "chromainvaxis",
+        notifier = function(text)
+          chromatic_inversion_axis = tonumber(text)
+        end
+    }
+  }
   
-  --dialog_content:add_child(settings_row)  
+  local axiscolspr1 = vb:column{width = 20}
   
+  local editstepaxis_tf = vb:column{
+    vb:text{
+      text="EditStep Inv Axis:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(editstep_inversion_axis),
+        id = "edistepinvaxis",
+        notifier = function(text)
+          editstep_inversion_axis = tonumber(text)
+        end
+    }
+  }   
   
+  -- editstep chooser 
+  local editstepchooser_row = vb:vertical_aligner {
+    mode="center",
+    vb:chooser {
+      id = "chooser",
+      value = 2,
+      items = {"Global EditStep", "Per Note EditStep"},
+      notifier = function(new_index)
+        --print("new_index:")
+        --print(new_index)
+        if new_index == 1 then
+          global_edit_step = true
+        else
+          global_edit_step = false
+        end
+      end
+    }
+  }
+  
+  local auxstr_tf = vb:vertical_aligner{
+    mode = "center",
+    vb:text{
+      text = "Aux FX Prefix:"
+    },
+    
+    vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = "0M",
+        id = "Aux Prefix",
+        notifier = function(text)
+          auxstr = text
+        end
+        }
+  }
+  
+  local aux_row = vb:row{}
+  local colspr1 = vb:column{width=20,height = BUTTON_HEIGHT*1.25}
+  local colspr2 = vb:column{width=20}
+  local colspr3 = vb:column{width=20}
+  local colspr4 = vb:column{width=20}
+  local colspr5 = vb:column{width=20}
+  local colspr6 = vb:column{width=20}
+  
+  -- aux enable chooser 
+  local auxenable_row = vb:vertical_aligner {
+    mode = "center",
+
+    vb:chooser {  
+      id = "auxenable",
+      value = 2,
+      items = {"Aux Place - On", "Aux Place - Off"},
+      notifier = function(new_index)
+        if new_index == 1 then
+          aux_place_enable = true  
+        else
+          aux_place_enable = false
+        end
+      end
+    }
+  }
+  
+    -- popup 
+    local scale_popup = vb:column {
+      vb:text {
+        text = "Scale:"
+      },
+      vb:popup {
+        id = "scalepopup",
+        width = 100,
+        value = 1,
+        items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
+        notifier = function(new_index)
+          if new_index == 1 then
+            scale_current = scale_chromatic
+          elseif new_index == 2 then
+            scale_current = scale_major
+          elseif new_index == 3 then
+            scale_current = scale_natminor
+          elseif new_index == 4 then
+            scale_current = scale_harminor
+          elseif new_index == 5 then
+            scale_current = scale_majorpent
+          elseif new_index == 6 then
+            scale_current = scale_minorpent
+          end
+            --load scale length
+            curscalelen = #scale_current
+            
+            --set inversion axis
+            chromatic_inversion_axis = curscalelen
+            view_input.chromainvaxis.text = tostring(curscalelen)
+          end
+      }
+    }
+    
+    local tonic_popup = vb:column {
+      vb:text {
+        text = "Tonic:"
+      },
+      vb:popup {
+        id = "tonicpopup",
+        width = 100,
+        value = 1,
+        items = {"C","C#/Db","D","D#/Eb","E","F","F#/Gb","G","G#/Ab","A","A#/Bb","B"},
+        notifier = function(new_index)
+          globaltonic = new_index
+        end
+      }
+    }
+  
+   local load_button = vb:button {
+        text = "Load User Prime",
+        tooltip = "Click to Calculate Matrix from User Prime",
+        notifier = function()
+          --local my_text_view = vb.views.prime_el_A
+          --my_text_view.text = "Button was hit."
+
+          load_custom_prime()
+        end
+  }
+  
+  -------------------------
+  -------------------------
+  --pre-matrix GUI assemble
+  -------------------------
+  -------------------------
   dialog_content:add_child(file_row)
-  menu_row:add_child(gen_button)
   
   if global_motif_length==12 then
-    dialog_content:add_child(menu_row)
+      dialog_content:add_child(gen_button)
   end
   
   dialog_content:add_child(glbmotiflen_tf)
@@ -1110,8 +1081,7 @@ function draw_window()
   aux_row:add_child(colspr2)
   aux_row:add_child(scale_popup)
 
-  
-
+ 
   dialog_content:add_child(degree_chroma_row)
   dialog_content:add_child(degree_vel_row)
   dialog_content:add_child(degree_editstep_row)
@@ -1126,19 +1096,22 @@ function draw_window()
   dialog_content:add_child(load_button)
   
   --------------------
+  --------------------
   ------matrix GUI
   --------------------
- 
+  --------------------
   local function drawmatrixgui()
   
     
-       
+    --draws matrix of dimensions (global motif length + 2)^2
+    --the "+2x" adds room for buttons on top, bottom and sides   
     for rowscan = 1,(global_motif_length+2) do
       -- create a row for each rowscan
       local rowscan_row = vb:row {}
   
       for colscan = 1,(global_motif_length+2) do
         
+        -----corners to be blank spaces-------
         if ((rowscan==1)and(colscan==1))or((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
           local colscan_button =vb:text {
             width = BUTTON_WIDTH,
@@ -1146,11 +1119,10 @@ function draw_window()
             align = "center",
             text = " "
           }  
-          
           rowscan_row:add_child(colscan_button)
-      
-        elseif (colscan == 1) then
         
+        --add prime selection butons
+        elseif (colscan == 1) then  
           local colscan_button = vb:button {
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT,
@@ -1162,14 +1134,12 @@ function draw_window()
                   active_prime_index=(rowscan-1)
                   active_prime_degree=1
                   
-                  prime_but_fcn("P"..tostring(rowscan-1))
+                  active_primebut_clr("P"..tostring(rowscan-1))
                   coloractivedegree("P",tostring(rowscan-1),1)
                 end
-        
               }
           rowscan_row:add_child(colscan_button)
         elseif (colscan == (global_motif_length+2)) then
-        
           local colscan_button = vb:button {
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT,
@@ -1181,14 +1151,12 @@ function draw_window()
                   active_prime_index=(rowscan-1)
                   active_prime_degree=1
                   
-                  prime_but_fcn("R"..tostring(rowscan-1))
+                  active_primebut_clr("R"..tostring(rowscan-1))
                   coloractivedegree("R",tostring(rowscan-1),1)
                 end
-        
               }
           rowscan_row:add_child(colscan_button)
         elseif (rowscan == 1) then
-        
           local rowscan_button = vb:button {
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT,
@@ -1200,14 +1168,12 @@ function draw_window()
                   active_prime_index=(colscan-1)
                   active_prime_degree=1
                 
-                  prime_but_fcn("I"..tostring(colscan-1))
+                  active_primebut_clr("I"..tostring(colscan-1))
                   coloractivedegree("I",tostring(colscan-1),1)
                 end
-        
               }
           rowscan_row:add_child(rowscan_button)
         elseif (rowscan == (global_motif_length+2)) then
-        
           local rowscan_button = vb:button {
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT,
@@ -1219,18 +1185,15 @@ function draw_window()
                   active_prime_index=(colscan-1)
                   active_prime_degree=1
                   
-                  prime_but_fcn("RI"..tostring(colscan-1))
+                  active_primebut_clr("RI"..tostring(colscan-1))
                   coloractivedegree("RI",tostring(colscan-1),1)
                 end
-        
               }
           rowscan_row:add_child(rowscan_button)
-            
-        else --indices are displayed here
-        ---matrix cell text fields
-        
-        -----------
-        --
+        else
+         
+        -------------
+        --add 'degree cells'
         --------------
         local cell_column = vb:column{
           style = "panel",
@@ -1297,68 +1260,77 @@ function draw_window()
           },
         }
         
+        --construct 'degree cell'
         cell_row_top:add_child(chroma_val)
         cell_row_top:add_child(vel_val)
         cell_row_bottom:add_child(step_val)
         cell_row_bottom:add_child(aux_val)
         cell_column:add_child(cell_row_top)
         cell_column:add_child(cell_row_bottom)
+        
+        --add cell to row
         rowscan_row:add_child(cell_column)
-          
         end
-        
-        
       end
   
-      --dialog_content:add_child(rowscan_row)
+        --add row to entire matrix cell
         matrix_column:add_child(rowscan_row)  
     end
     
-    dialog_content:add_child(matrix_column)
-    
+    --add matrix to dialog box
+    dialog_content:add_child(matrix_column) 
   end
   
-  
+  --draw matrix (for first call)
   drawmatrixgui() 
   
-  -------------------------
+  -----------------------
   ---post matrix GUI
   ----------------------
   local punch_row = vb:row{}
   
   local function punchaction()
-     
+    
+    --get cell attributes
     received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,active_prime_degree)
       
     --place note
     placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4])
-        
+    
+    --either jump by global editstep or draw from cell    
     if global_edit_step == false then            
       editstep_tmp = received_degree_info[3]
     else
       editstep_tmp = renoise.song().transport.edit_step
     end                 
-      
+     
+    --move cursor 
     jumpbystep(editstep_tmp)
 
-    
+    --increment to next degree in current prime string
     active_prime_degree=active_prime_degree+1
     
+    --if all elements in prime string have been called
     if(active_prime_degree==(global_motif_length+1)) then
       print('prime row complete')
       
+      --disqualify prime button from color reset 
       last_button_id = "punchbutton"
+      --color it green
       view_input[active_prime_type..active_prime_index].color={0x22, 0xaa, 0x00}
       
+      --spray mode off
       spraymodeactive=false
       
+      --reset prime counter
       active_prime_degree=1
     end
     
+    -- color the next degree cell
     coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
   end
   
-  
+  --punch button writes cell to pattern seq
   local punch_button = vb:button {
     width = BUTTON_WIDTH*(global_motif_length+2)/3,
     height = BUTTON_HEIGHT/menu_button_scale,
@@ -1369,7 +1341,8 @@ function draw_window()
     end
   
   }
-            
+  
+  --jumps down by global edit step     
   local jumpdown_button = vb:button {
     width = BUTTON_WIDTH*(global_motif_length+2)/3,
     height = BUTTON_HEIGHT/menu_button_scale,
@@ -1384,6 +1357,7 @@ function draw_window()
     end
   }
   
+  --**ought to** write all remaining notes in prime string
   local spray_button = vb:button {
     width = BUTTON_WIDTH*(global_motif_length+2)/3,
     height = BUTTON_HEIGHT/menu_button_scale,
@@ -1396,13 +1370,16 @@ function draw_window()
        punchaction() 
     end
   }
-              
+  
+  --------------------------
+  --Assemble post Matrix GUI            
+  --------------------------
   punch_row:add_child(punch_button)
-  --punch_row:add_child(spray_button)
   punch_row:add_child(jumpdown_button)   
   
   dialog_content:add_child(punch_row)
 
+  --displays dialog box
   dialog_box_window = renoise.app():show_custom_dialog(
     "Serial Killa", dialog_content)
 
