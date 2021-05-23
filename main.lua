@@ -14,11 +14,14 @@ rprint("Run Serial Killa 2")
 
 --------------------------------------------------------------------------------
 -- matrix Generation Logic
---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+
 
 ------Enable Test Mode------
 local test_mode = "true"
 ----------------------------
+
+local do_draw = "false"
 
 --initialized 12 tone prime
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
@@ -66,7 +69,8 @@ local current_prime_index = 0
 local current_prime_val = 0
 
 --octave offset
-local chromatic_offset = renoise.song().transport.octave*12
+--local chromatic_offset = renoise.song().transport.octave*12
+local chromatic_offset
 local octave_strip
 
 --'spray' editstep (currently unused)
@@ -75,8 +79,9 @@ local spray_spacing = 6
 --view objects
 local vb = renoise.ViewBuilder()
 local view_input = vb.views
-local dialog_box_window
+local dialog_box_window 
 local quickrev_buf
+local dialog_content = vb:column {}
 
 --default button references
 local last_button_id = "punchbutton"  
@@ -105,7 +110,8 @@ local auxstr="0M"
 local chromatic_inversion_axis = 12
 local editstep_inversion_axis = 12
 
-local editstep_tmp = renoise.song().transport.edit_step
+--local editstep_tmp = renoise.song().transport.edit_step
+local editstep_tmp
 
 local global_motif_length = 12
 
@@ -114,6 +120,7 @@ local spraymodeactive = false
 local received_degree_info
 
 local placenotebusy = false
+
 
 --column to hold generated matrix and buttons (for redraw)
 local matrix_column = vb:column{id = "matrixchild"}
@@ -316,7 +323,12 @@ end
 --adds SerialKilla to keyboard shortcuts
 renoise.tool():add_keybinding {
     name = "Global:Tools:Serial Killa",
-    invoke = function() draw_window() end
+    invoke = function()      
+      
+      dialog_box_window = renoise.app():show_custom_dialog(
+    "Serial Killa", dialog_content)
+      
+    end
   }
 
 -------------------------------
@@ -689,7 +701,10 @@ end
 --add SerialKilla to menu
 renoise.tool():add_menu_entry {
   name = "Main Menu:Tools:Serial Killa",
-  invoke = function() draw_window() end 
+  invoke = function() 
+    dialog_box_window = renoise.app():show_custom_dialog(
+    "Serial Killa", dialog_content) 
+  end 
 }
 
 local function reset_mkrs()
@@ -712,7 +727,7 @@ function draw_window()
   local DEFAULT_CONTROL_SPACING = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING
   
   --all gui content  
-  local dialog_content = vb:column {}
+ 
   
   local settings_row = vb:row {}
   local menu_row = vb:row {}
@@ -1651,8 +1666,10 @@ function draw_window()
   dialog_content:add_child(punch_row)
 
   --displays dialog box
-  dialog_box_window = renoise.app():show_custom_dialog(
-    "Serial Killa", dialog_content)
+  if do_draw=="true" then
+    dialog_box_window = renoise.app():show_custom_dialog(
+      "Serial Killa", dialog_content)
+  end
 
     if test_mode == "true" then
       set_test_vars()
@@ -1668,7 +1685,48 @@ function set_test_vars()
    --generate_prime()
 end
 
-
+-- Notifier handler functions  
+local notifier = {}  
+  
+ function notifier.add(observable, n_function)  
+ if not observable:has_notifier(n_function) then  
+ observable:add_notifier(n_function)  
+ end  
+ end  
+  
+ function notifier.remove(observable, n_function)  
+ if observable:has_notifier(n_function) then  
+ observable:remove_notifier(n_function)  
+ end  
+ end  
+  
+----------------------
+--Loading Notifiers
+----------------------  
+  
+  
+-- Set up song opening & closing observables  
+local new_doc_observable = renoise.tool().app_new_document_observable  
+local close_doc_observable = renoise.tool().app_release_document_observable  
+  
+  
+-- Set up notifier functions that are called when song opened or closed  
+local function open_song()
+  chromatic_offset = renoise.song().transport.octave*12
+  editstep_tmp = renoise.song().transport.edit_step
+  
+  draw_window()
+  do_draw="true"
+end  
+  
+local function close_song()  
+ 
+end  
+  
+  
+-- Add the notifiers  
+notifier.add(new_doc_observable, open_song)  
+notifier.add(close_doc_observable, close_song)  
 
 
 
