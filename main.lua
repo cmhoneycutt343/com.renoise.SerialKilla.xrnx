@@ -83,7 +83,7 @@ local last_button_id = "punchbutton"
 local last_cell_id = "col1_1"
 
 --button mode options
-local manual_mark_mode=false
+local manual_mark_mode="false"
 
 --default prime references
 local active_prime_type="P"
@@ -131,7 +131,6 @@ local function generate_prime()
   --reinitialize prime values  
   initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
   generated_prime = {}
-    local  current_prime_index = 0
   local  current_prime_val = 0
   
   --generates 12 tone randomized prime
@@ -373,6 +372,19 @@ local function active_primebut_clr(button_id)
   
   --set current button to set button
   last_button_id = button_id
+end
+
+--for manual marking
+local function mark_primebut(button_id)
+  
+  --color current button green
+  view_input[button_id].color={0x22, 0xaa, 0x00}
+  --last_button_id = "punchbutton"
+  
+  if button_id == last_button_id then
+    last_button_id = "punchbutton"
+  end
+  
 end
 
 --colors next 'prime' box for punchin
@@ -1288,7 +1300,7 @@ function draw_window()
       for colscan = 1,(global_motif_length+2) do
         
         -----corners to be blank spaces-------
-        if ((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(1))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
+        if ((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(1))and(colscan==1)) then
           local colscan_button =vb:text {
             width = BUTTON_WIDTH,
             height = BUTTON_HEIGHT,
@@ -1298,7 +1310,7 @@ function draw_window()
           rowscan_row:add_child(colscan_button)
         
         --reset markers
-        elseif ((rowscan==(global_motif_length+2))and(colscan==1)) then
+        elseif ((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
           local resetmkr_button = vb:button {
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT,
@@ -1309,6 +1321,33 @@ function draw_window()
                 end
               }
           rowscan_row:add_child(resetmkr_button)
+        elseif ((rowscan==1)and(colscan==(global_motif_length+2))) then
+          local manual_mkrcont = vb:vertical_aligner{
+             mode = "justify",
+             vb:text{
+                text = "Manual:",
+                align = "center"
+             },
+             vb:horizontal_aligner {
+                mode = "center",
+                vb:checkbox {
+                  value = false,
+                  id = "manualmrk_chk",
+                  notifier = function(value)
+                    if value == true then
+                      manual_mark_mode="true" 
+                    else
+                      manual_mark_mode="false"
+                    end
+                  
+                  end,
+                }
+             }
+          }
+              
+              
+              
+          rowscan_row:add_child(manual_mkrcont)
         --add prime selection butons
         elseif (colscan == 1) then  
           local colscan_button = vb:button {
@@ -1318,12 +1357,16 @@ function draw_window()
                 id = "P"..tostring(rowscan-1),
                 
                 notifier = function(width)
-                  active_prime_type="P"
-                  active_prime_index=(rowscan-1)
-                  active_prime_degree=1
-                  
-                  active_primebut_clr("P"..tostring(rowscan-1))
-                  coloractivedegree("P",tostring(rowscan-1),1)
+                  if manual_mark_mode=="true" then
+                    mark_primebut("P"..tostring(rowscan-1))
+                  else
+                    active_prime_type="P"
+                    active_prime_index=(rowscan-1)
+                    active_prime_degree=1
+                    
+                    active_primebut_clr("P"..tostring(rowscan-1))
+                    coloractivedegree("P",tostring(rowscan-1),1)
+                  end
                 end
               }
           rowscan_row:add_child(colscan_button)
@@ -1335,12 +1378,16 @@ function draw_window()
                 id = "R"..tostring(rowscan-1),
         
                 notifier = function()
-                  active_prime_type="R"
-                  active_prime_index=(rowscan-1)
-                  active_prime_degree=1
-                  
-                  active_primebut_clr("R"..tostring(rowscan-1))
-                  coloractivedegree("R",tostring(rowscan-1),1)
+                  if manual_mark_mode=="true" then
+                    mark_primebut("R"..tostring(rowscan-1))
+                  else
+                    active_prime_type="R"
+                    active_prime_index=(rowscan-1)
+                    active_prime_degree=1
+                    
+                    active_primebut_clr("R"..tostring(rowscan-1))
+                    coloractivedegree("R",tostring(rowscan-1),1)
+                  end
                 end
               }
           rowscan_row:add_child(colscan_button)
@@ -1352,12 +1399,16 @@ function draw_window()
                 id ="I"..tostring(colscan-1),
         
                 notifier = function()
-                  active_prime_type="I"
-                  active_prime_index=(colscan-1)
-                  active_prime_degree=1
-                
-                  active_primebut_clr("I"..tostring(colscan-1))
-                  coloractivedegree("I",tostring(colscan-1),1)
+                  if manual_mark_mode=="true" then
+                    mark_primebut("I"..tostring(colscan-1))
+                  else
+                    active_prime_type="I"
+                    active_prime_index=(colscan-1)
+                    active_prime_degree=1
+                  
+                    active_primebut_clr("I"..tostring(colscan-1))
+                    coloractivedegree("I",tostring(colscan-1),1)
+                  end
                 end
               }
           rowscan_row:add_child(rowscan_button)
@@ -1369,12 +1420,16 @@ function draw_window()
                 id = "RI"..tostring(colscan-1),
         
                 notifier = function()
-                  active_prime_type="RI"
-                  active_prime_index=(colscan-1)
-                  active_prime_degree=1
-                  
-                  active_primebut_clr("RI"..tostring(colscan-1))
-                  coloractivedegree("RI",tostring(colscan-1),1)
+                  if manual_mark_mode=="true" then
+                    mark_primebut("RI"..tostring(colscan-1))
+                  else
+                    active_prime_type="RI"
+                    active_prime_index=(colscan-1)
+                    active_prime_degree=1
+                    
+                    active_primebut_clr("RI"..tostring(colscan-1))
+                    coloractivedegree("RI",tostring(colscan-1),1)
+                  end
                 end
               }
           rowscan_row:add_child(rowscan_button)
@@ -1532,7 +1587,7 @@ function draw_window()
       
       --disqualify prime button from color reset 
       last_button_id = "punchbutton"
-      --color it green
+      --color it blue
       view_input[active_prime_type..active_prime_index].color={0x22, 0xaa, 0x00}
       
       --spray mode off
