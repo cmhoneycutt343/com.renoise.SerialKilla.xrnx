@@ -57,7 +57,9 @@ notetochroma["a#"] = 10
 notetochroma["b"] = 11
 
 --global tonic
-local globaltonic = "c";
+local globaltonic = "c"
+local tonic_offset = 0
+local active_primebut_clr = 0
 
 --indexing variables for generating 12 tone prime
 local current_prime_index = 0
@@ -65,6 +67,7 @@ local current_prime_val = 0
 
 --octave offset
 local chromatic_offset = renoise.song().transport.octave*12
+local octave_strip
 
 --'spray' editstep (currently unused)
 local spray_spacing = 6
@@ -154,7 +157,7 @@ local function generate_prime()
   
   print("")
   print(view_input["1_1"].width)
-  print(view_input.oct1_1.width)
+  --print(view_input.oct1_1.width)
   print(view_input.vel1_1.width)
   
   
@@ -182,9 +185,11 @@ function generate_matrix()
     
       --cell reference prefixes
       local cell_id = tostring(prime_index_row).."_"..tostring(prime_index_col)
+      local cell_id_oct = "oct"..cell_id
       local cell_id_vel = "vel"..cell_id
       local cell_id_aux = "aux"..cell_id
       local cell_id_editstep = "step"..cell_id
+      
 
       --column based 
       local vel_loc = "deg_vel_in"..prime_index_col
@@ -205,28 +210,66 @@ function generate_matrix()
       --inversion logic
       local rot_index = (prime_index_col+prime_index_row-2)%global_motif_length+1
       
-      --if note inversion activated...
+      
+      
+      ---------------------------
+      --note inversion alg
+      ---------------------------
+      
+      --if inverting.....
       if note_inv_bool == true then
         
         --incorporates scale inversion axis, offset, and degree from motif
-        view_input[cell_id].text = tostring((generated_prime[prime_index_col]-degree_offset)%chromatic_inversion_axis)
+        local offset_adjusted = (generated_prime[prime_index_col]-degree_offset)
+        local symmat_index = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
+        
+        local octave_strip
+        
+        if(prime_index_row>prime_index_col) then
+          octave_strip = tostring(-math.floor(symmat_index/curscalelen))
+        else
+          octave_strip = tostring(math.floor(symmat_index/curscalelen))
+        end
+        
+        --fold with inversion axis       
+        local inversion_stripped = tostring((offset_adjusted)%chromatic_inversion_axis)
         
         --gets scale degree index (0-scale length)
-        local chromaget = tonumber(view_input[cell_id].text)%(curscalelen)
+        local degree_get = tonumber(inversion_stripped)%(curscalelen)
+                
+        --convert scale degree to chroma
+        local chromafromscale = scale_current[degree_get+1]
         
-        --converts to "note" string and loads to text field
-        local notereturn = chromaref[scale_current[chromaget+1]+1]
-        view_input[cell_id].text = notereturn
+        --converts to "note" string and loads to text field      
+        local notestrreturn = chromaref[(chromafromscale+tonic_offset)%12+1]
+        
+        --fill cell
+        view_input[cell_id].text = notestrreturn
+        --view_input[cell_id_oct].text = octave_strip
       
       --if note inversion not activated...  
       else
         --gets chroma index   
-        local callindex = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
-        view_input[cell_id].text = callindex
+        local symmat_index = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         
-        --converts to "note" string 
-        view_input[cell_id].text = chromaref[tonumber(view_input[cell_id].text)+1]
+        --get degree index 
+        local degree_get = tonumber(symmat_index)%(curscalelen)
+        local octave_strip = tostring(math.floor(symmat_index/curscalelen))
+        
+        --convert scale degree to chroma
+        local chromafromscale = scale_current[degree_get+1]
+        
+        --converts to "note" string and loads to text field
+        local notestreturn = chromaref[chromafromscale+1]
+        
+        --fill cell
+        view_input[cell_id].text = notestreturn
+        --view_input[cell_id_oct].text = octave_strip
       end      
+      
+      
+      
+      
       
       --velocity inversion or not
       if vel_inv_bool == true then
@@ -308,6 +351,7 @@ local function retreivecellattribs(primetype,primeindex,degree)
   table.insert(degreeinfo,view_input["vel"..mat_cell_id].text)
   table.insert(degreeinfo,view_input["step"..mat_cell_id].text)
   table.insert(degreeinfo,view_input["aux"..mat_cell_id].text)
+  --table.insert(degreeinfo,view_input["oct"..mat_cell_id].text)
   
   --return data
   return degreeinfo 
@@ -365,7 +409,7 @@ end
 -------------------------------------------------
 --[[function that draws note into pattern seq]]--
 -------------------------------------------------
-function placenote(notein,curvelin,auxin)
+function placenote(notein,curvelin,auxin,octin)
   --
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
@@ -373,12 +417,20 @@ function placenote(notein,curvelin,auxin)
   local curinst = tonumber(renoise.song().selected_instrument_index-1)
   local curaux = tonumber(auxin)
   local curcolumn = renoise.song().selected_note_column_index
+  local curoct = 0
   
   --gets chroma index
-  local degreein = notetochroma[notein] 
+  local degreein = notetochroma[notein]
+  
+  local oct_scale_crr = 0
+  
+  --correction to add octave to all notes 'below' the global tonic
+  if(degreein<tonic_offset) then
+    oct_scale_crr = 1 
+  end
   
   --gets octave offset from GUI
-  chromatic_offset = renoise.song().transport.octave*12  
+  chromatic_offset = (renoise.song().transport.octave+tonumber(curoct)+oct_scale_crr)*12  
   
   --variable for place to write in pattern seq
   local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[curcolumn]
@@ -627,7 +679,7 @@ function draw_window()
 
   local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
 
-  local BUTTON_WIDTH = 3*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
+  local BUTTON_WIDTH = 2.3*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   local BUTTON_HEIGHT = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   
   local DEFAULT_DIALOG_MARGIN = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN
@@ -1042,15 +1094,18 @@ function draw_window()
     
     local tonic_popup = vb:column {
       vb:text {
-        text = "Tonic:"
+        text = "Tonic Offset:"
       },
       vb:popup {
         id = "tonicpopup",
         width = 100,
         value = 1,
-        items = {"C","C#/Db","D","D#/Eb","E","F","F#/Gb","G","G#/Ab","A","A#/Bb","B"},
+        items = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"},
         notifier = function(new_index)
           globaltonic = new_index
+          
+          print("tonic popup notifier")
+          tonic_offset = tonumber(new_index-1)
         end
       }
     }
@@ -1222,25 +1277,24 @@ function draw_window()
           spacing = -5,
           mode = "justify",
           vb:text {
-            width = 23,
+            width = 18,
             height = BUTTON_HEIGHT/2,
             id = tostring(rowscan-1).."_"..tostring(colscan-1),
             --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
             text = "N",
-            font = "big",
             style = "strong",
             align = "left"
           },
-          vb:text {
+          --[[vb:text {
             width = 18,
             height = BUTTON_HEIGHT/2,
             id = "oct"..tostring(rowscan-1).."_"..tostring(colscan-1),
-            text = "2",
+            text = "",
             style = "disabled",
             align = "left"
-          },
+          },]]--
           vb:text {
-            width = 22,
+            width = 18,
             height = BUTTON_HEIGHT/2,
             id = "vel"..tostring(rowscan-1).."_"..tostring(colscan-1),
             --rprint(tostring(rowscan-1).."_"..tostring(colscan-1)),
@@ -1332,7 +1386,7 @@ function draw_window()
     received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,active_prime_degree)
       
     --place note
-    placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4])
+    placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4],received_degree_info[5])
     
     --either jump by global editstep or draw from cell    
     if global_edit_step == false then            
