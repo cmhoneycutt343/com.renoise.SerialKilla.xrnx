@@ -90,6 +90,7 @@ local active_prime_degree=1
 local note_inv_bool=true
 local vel_inv_bool=false
 local editstep_inv_bool=false
+local editstep_scale = 1
 local aux_inv_bool=false
 
 local global_edit_step = false
@@ -720,7 +721,9 @@ function draw_window()
   ---------------
   ---File buttons
   ---------------
-  local file_row = vb:row{}
+  local file_row = vb:horizontal_aligner{
+    mode = "justify"
+  }
   
   local loadfile_button = vb:button {
     text = "Load .srl File",
@@ -978,6 +981,8 @@ function draw_window()
   }
   
   local axiscolspr1 = vb:column{width = 20}
+  local axiscolspr2 = vb:column{width = 20}
+  local axiscolspr3 = vb:column{width = 20}
   
   local editstepaxis_tf = vb:column{
     vb:text{
@@ -993,6 +998,22 @@ function draw_window()
           editstep_inversion_axis = tonumber(text)
         end
     }
+  }
+  
+  local editstepscale_tf = vb:column{
+    vb:text{
+      text="EditStep Scale:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(editstep_scale),
+        id = "edistepscale",
+        notifier = function(text)
+          editstep_scale = tonumber(text)
+        end
+    }
   }   
   
   -- editstep chooser 
@@ -1000,7 +1021,7 @@ function draw_window()
     mode="center",
     vb:chooser {
       id = "chooser",
-      value = 2,
+      value = 1,
       items = {"Global EditStep", "Per Note EditStep"},
       notifier = function(new_index)
         --print("new_index:")
@@ -1150,10 +1171,12 @@ function draw_window()
   dialog_content:add_child(degree_editstep_row)
   dialog_content:add_child(degree_aux_row)
 
-  
-  axis_row:add_child(chromaxis_tf)
+  axis_row:add_child(editstepscale_tf)
   axis_row:add_child(axiscolspr1)
   axis_row:add_child(editstepaxis_tf)
+  axis_row:add_child(axiscolspr2)
+  axis_row:add_child(chromaxis_tf)
+    
   dialog_content:add_child(axis_row) 
   dialog_content:add_child(aux_row)  
   dialog_content:add_child(load_button)
@@ -1396,7 +1419,7 @@ function draw_window()
     end                 
      
     --move cursor 
-    jumpbystep(editstep_tmp)
+    jumpbystep(editstep_tmp*editstep_scale)
 
     --increment to next degree in current prime string
     active_prime_degree=active_prime_degree+1
