@@ -81,6 +81,9 @@ local dialog_box_window
 local last_button_id = "punchbutton"  
 local last_cell_id = "col1_1"
 
+--button mode options
+local manual_mark_mode=false
+
 --default prime references
 local active_prime_type="P"
 local active_prime_index=1
@@ -93,7 +96,7 @@ local editstep_inv_bool=false
 local editstep_scale = 1
 local aux_inv_bool=false
 
-local global_edit_step = false
+local global_edit_step = true
 local aux_place_enable = false
 
 local auxstr="0M"
@@ -676,6 +679,15 @@ renoise.tool():add_menu_entry {
   invoke = function() draw_window() end 
 }
 
+local function reset_mkrs()
+  for rowscan = 1,(global_motif_length) do
+    view_input["P"..rowscan].color={0,0,0}
+    view_input["R"..rowscan].color={0,0,0}
+    view_input["I"..rowscan].color={0,0,0}
+    view_input["RI"..rowscan].color={0,0,0}
+  end
+end 
+
 function draw_window()
 
   local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
@@ -1198,7 +1210,7 @@ function draw_window()
       for colscan = 1,(global_motif_length+2) do
         
         -----corners to be blank spaces-------
-        if ((rowscan==1)and(colscan==1))or((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
+        if ((rowscan==1)and(colscan==(global_motif_length+2)))or((rowscan==(1))and(colscan==1))or((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
           local colscan_button =vb:text {
             width = BUTTON_WIDTH,
             height = BUTTON_HEIGHT,
@@ -1207,6 +1219,18 @@ function draw_window()
           }  
           rowscan_row:add_child(colscan_button)
         
+        --reset markers
+        elseif ((rowscan==(global_motif_length+2))and(colscan==1)) then
+          local resetmkr_button = vb:button {
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT,
+                text = "Reset\nMkrs",
+                
+                notifier = function(width)
+                  reset_mkrs()
+                end
+              }
+          rowscan_row:add_child(resetmkr_button)
         --add prime selection butons
         elseif (colscan == 1) then  
           local colscan_button = vb:button {
