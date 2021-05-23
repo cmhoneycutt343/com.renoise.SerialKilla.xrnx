@@ -76,6 +76,7 @@ local spray_spacing = 6
 local vb = renoise.ViewBuilder()
 local view_input = vb.views
 local dialog_box_window
+local quickrev_buf
 
 --default button references
 local last_button_id = "punchbutton"  
@@ -855,7 +856,7 @@ function draw_window()
   end
   
   --velocity  
-  for tfrowscan = 1,(global_motif_length+2) do
+  for tfrowscan = 1,(global_motif_length+3) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -866,6 +867,7 @@ function draw_window()
       
       degree_vel_row:add_child(tf_obj) 
     
+    --inversion check box
     elseif (tfrowscan==(global_motif_length+2)) then
       
       local tf_obj = vb:row{}
@@ -879,7 +881,32 @@ function draw_window()
       }
       
       tf_obj:add_child(vel_inv_bool)
-      degree_vel_row:add_child(tf_obj) 
+      degree_vel_row:add_child(tf_obj)
+    
+    --quickrev buton  
+    elseif (tfrowscan==(global_motif_length+3)) then
+      
+      local tf_obj = vb:row{}
+    
+      local vel_rev_but = vb:button {
+        text = "R",
+        id = "vel_rev_but",
+        notifier = function()
+          
+          --reverse textfields
+          quickrev_buf = {} 
+          for index=1,global_motif_length do
+            table.insert(quickrev_buf,view_input["deg_vel_in"..index].text)
+          end
+          for index=1,global_motif_length do
+            view_input["deg_vel_in"..index].text=quickrev_buf[global_motif_length+1-index]
+          end
+          
+        end,
+      }
+      
+      tf_obj:add_child(vel_rev_but)
+      degree_vel_row:add_child(tf_obj)  
    
     else
       local tf_obj =vb:textfield {
@@ -895,7 +922,7 @@ function draw_window()
   end
   
   --aux  
-  for tfrowscan = 1,(global_motif_length+2) do
+  for tfrowscan = 1,(global_motif_length+3) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -904,6 +931,8 @@ function draw_window()
           text = "aux:"
         }
       degree_aux_row:add_child(tf_obj) 
+    
+    --inversion checkbox
     elseif (tfrowscan==(global_motif_length+2)) then
       
       local tf_obj = vb:row{}
@@ -917,7 +946,31 @@ function draw_window()
       }
       
       tf_obj:add_child(aux_inv_bool)
-      degree_aux_row:add_child(tf_obj) 
+      degree_aux_row:add_child(tf_obj)
+    
+    --quickrev button  
+    elseif (tfrowscan==(global_motif_length+3)) then
+      
+      local tf_obj = vb:row{}
+    
+      local aux_rev_but = vb:button {
+        text = "R",
+        id = "aux_rev_but",
+        notifier = function()
+        
+          --reverse textfields
+          quickrev_buf = {} 
+          for index=1,global_motif_length do
+            table.insert(quickrev_buf,view_input["deg_aux_in"..index].text)
+          end
+          for index=1,global_motif_length do
+            view_input["deg_aux_in"..index].text=quickrev_buf[global_motif_length+1-index]
+          end
+        end,
+      }
+      
+      tf_obj:add_child(aux_rev_but)
+      degree_aux_row:add_child(tf_obj)  
    
     else
       local tf_obj =vb:textfield {
@@ -933,7 +986,7 @@ function draw_window()
   end
   
   --editstep  
-  for tfrowscan = 1,(global_motif_length+2) do
+  for tfrowscan = 1,(global_motif_length+3) do
     if (tfrowscan==1) then
       local tf_obj =vb:text {
           width = BUTTON_WIDTH,
@@ -942,6 +995,8 @@ function draw_window()
           text = "step:"
         }
       degree_editstep_row:add_child(tf_obj) 
+    
+    --inversion checkbox
     elseif (tfrowscan==(global_motif_length+2)) then
       
      local tf_obj = vb:row{}
@@ -955,6 +1010,29 @@ function draw_window()
       }
       
       tf_obj:add_child(editstep_inv_bool)
+      degree_editstep_row:add_child(tf_obj)
+    
+    --quickrev button  
+    elseif (tfrowscan==(global_motif_length+3)) then
+      
+     local tf_obj = vb:row{}
+    
+      local editstep_rev_but = vb:button {
+        text = "R",
+        id = "editstep_rev_but",
+        notifier = function()
+          --reverse textfields
+          quickrev_buf = {} 
+          for index=1,global_motif_length do
+            table.insert(quickrev_buf,view_input["deg_editstep_in"..index].text)
+          end
+          for index=1,global_motif_length do
+            view_input["deg_editstep_in"..index].text=quickrev_buf[global_motif_length+1-index]
+          end
+        end,
+      }
+      
+      tf_obj:add_child(editstep_rev_but)
       degree_editstep_row:add_child(tf_obj) 
    
     else
