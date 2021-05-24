@@ -31,12 +31,14 @@ local generated_prime = {}
 local chromaref = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"}
 
 --indexable scales
+
 local scale_chromatic = {0,1,2,3,4,5,6,7,8,9,10,11}
 local scale_major = {0,2,4,5,7,9,11}
 local scale_natminor = {0,2,3,5,7,8,10}
 local scale_harminor = {0,2,3,5,7,8,11}
 local scale_majorpent = {0,2,4,7,9}
 local scale_minorpent = {0,3,5,7,10}
+local scale_list = {scale_chromatic,scale_major,scale_natminor,scale_harminor,scale_majorpent,scale_minorpent}
 
 --sets default scale
 local scale_current = scale_chromatic
@@ -60,7 +62,7 @@ notetochroma["a#"] = 10
 notetochroma["b"] = 11
 
 --global tonic
-local globaltonic = "c"
+
 local tonic_offset = 0
 local active_primebut_clr = 0
 
@@ -72,6 +74,7 @@ local current_prime_val = 0
 --local chromatic_offset = renoise.song().transport.octave*12
 local chromatic_offset
 local octave_strip
+local interval_inv = false
 
 --'spray' editstep (currently unused)
 local spray_spacing = 6
@@ -81,7 +84,10 @@ local vb = renoise.ViewBuilder()
 local view_input = vb.views
 local dialog_box_window 
 local quickrev_buf
-local dialog_content = vb:column {}
+local redraw_shell = vb:row{}
+local dialog_content = vb:column {id = "dialogchild"}
+--column to hold generated matrix and buttons (for redraw)
+local matrix_column = vb:column{id = "matrixchild"}
 
 --default button references
 local last_button_id = "punchbutton"  
@@ -89,6 +95,9 @@ local last_cell_id = "col1_1"
 
 --button mode options
 local manual_mark_mode="false"
+local notation_enable="true"
+local notation_start="false"
+local notstr_pat
 
 --default prime references
 local active_prime_type="P"
@@ -121,9 +130,9 @@ local received_degree_info
 
 local placenotebusy = false
 
+--loading variables
+local booleantable = {false,true}
 
---column to hold generated matrix and buttons (for redraw)
-local matrix_column = vb:column{id = "matrixchild"}
 
 ------------------------------------------
 --[[function to generate 12 tone prime]]--
@@ -326,10 +335,27 @@ renoise.tool():add_keybinding {
     invoke = function()      
       
       dialog_box_window = renoise.app():show_custom_dialog(
-    "Serial Killa", dialog_content)
+    "Serial Killa", redraw_shell)
       
     end
   }
+
+local function updatescaleinfo(index)
+  scale_current = scale_list[index]
+  
+  --load scale length
+  curscalelen = #scale_current
+    
+  --set inversion axis
+  chromatic_inversion_axis = curscalelen
+  view_input.chromainvaxis.text = tostring(curscalelen)
+end
+
+--concatenate pattern comments  
+local function concat_pat_name(patindex, patcom)
+    local curcom = renoise.song().patterns[patindex].name
+    renoise.song().patterns[patindex].name = curcom..patcom 
+end 
 
 -------------------------------
 --[[gets chroma from matrix]]-- 
@@ -623,9 +649,10 @@ end --of load file in bytes to table
 
 --table whose elements are each lists of options, attribute, etc
 local parsed_data = {}
+local sub_parsed_data = {}
 --buffer for elements of parsed_data
 local parse_stringbuf = ""
-local parsed_index = 1
+local parser_index = 1
 local byte_buffer
 local dataload_in
 
@@ -633,6 +660,8 @@ local dataload_in
 --[[input file parser]]--
 -------------------------
 local function file_parser()
+  
+  parser_index = 1
   
   --for all bytes loaded from file/////
   for s = 1, #dataload_in do
@@ -645,9 +674,9 @@ local function file_parser()
     --if 'line feed (10)' byte
     if current_byte == 10 then
       --write compiled data field into single 'parsed_data' field
-      parsed_data[parsed_index] = parse_stringbuf
+      parsed_data[parser_index] = parse_stringbuf
       --increment index and reinitialize buffer
-      parsed_index = parsed_index+1
+      parser_index = parser_index+1
       parse_stringbuf = ""
     else
       --concatenate bytes until 'line feed' found
@@ -655,38 +684,137 @@ local function file_parser()
     end
   end
   
+  -------------------------------
+  --.SRL FILE FORMAT----
+  -------------------------------
+  --[[
+  --a. individual options are seperated by line (aka 'linefeed' hex 0x10)
+  --b. options with multiple fields are seperated by comma
+  --c. booleans are '1' and '2' for false and true respectively
+  --d. multi-choosers are 0,1,2...etc  
+  --e. file must maintain order of variables below:
+  
+  1. degree list [multiple elements]
+  **calculate 'motif_len' from this
+  2. degree velocity list [multiple elements] 
+  3. degree editstep list [multiple elements]
+  4. degree auxilary list [multiple elements]
+  5. inversion bools [4 bools]
+  6. Editstep scale [1:num]
+  7. Editstep Inv Axis [1:num]
+  8. Chroma Inv Axis [1:int]
+  9. Octave Option [chooser:2]
+  10. Add notation [bool]
+  11. Editstep select [chooser:2]
+  12. Aux Place [chooser:2]
+  13. Aux FX Prefer [2 Byte String]
+  14. Tonic Offset [chooser:12]
+  15. scale [chooser:6]
+  
+  ]]--
+  
   local prsinc = 1
  
-  ---load parsed_data into text fields   
+  ---**calculate 'motif_len'  
+  for s in parsed_data[1]:gmatch("[^\r,]+") do
+    prsinc = prsinc + 1
+  end
+  
+  global_motif_length = prsinc-1
+  view_input.glbmotiflen.text = tostring(global_motif_length)
+ 
+  --1. degree list [multiple elements]
+  local prsinc = 1   
   for s in parsed_data[1]:gmatch("[^\r,]+") do
     local tf_in = "prime_in"..tostring(prsinc)
     view_input[tf_in].text = s
     prsinc = prsinc + 1
   end
   
+  --2. degree velocity list [multiple elements]
   prsinc = 1
-  
   for s in parsed_data[2]:gmatch("[^\r,]+") do
     local tf_in = "deg_vel_in"..tostring(prsinc)
     view_input[tf_in].text = s
     prsinc = prsinc + 1
   end 
   
+  --3. degree editstep list [multiple elements]
   prsinc = 1
-  
   for s in parsed_data[3]:gmatch("[^\r,]+") do
     local tf_in = "deg_editstep_in"..tostring(prsinc)
     view_input[tf_in].text = s
     prsinc = prsinc + 1
   end 
   
+  --4. degree auxilary list [multiple elements]
   prsinc = 1
-  
   for s in parsed_data[4]:gmatch("[^\r,]+") do
     local tf_in = "deg_aux_in"..tostring(prsinc)
     view_input[tf_in].text = s
     prsinc = prsinc + 1
   end  
+  
+  --5. inversion bools [4 bools]
+  prsinc = 1
+  for s in parsed_data[5]:gmatch("[^\r,]+") do
+    sub_parsed_data[prsinc] = booleantable[tonumber(s)]
+    prsinc = prsinc + 1
+  end
+  view_input.note_inv_bool.value = sub_parsed_data[1]
+  view_input.vel_inv_bool.value = sub_parsed_data[2]
+  view_input.editstep_inv_bool.value = sub_parsed_data[3]
+  view_input.aux_inv_bool.value = sub_parsed_data[4]
+ 
+  --6. Editstep scale [1:num]
+  view_input.editstepscale.text = tostring(parsed_data[6])
+  editstep_scale = parsed_data[6]
+  
+  --7. Editstep Inv Axis [1:num]
+  view_input.editstepinvaxis.text = tostring(parsed_data[7])
+  editstep_inversion_axis = tonumber(parsed_data[7])
+
+  --8. Octave Option [chooser:2]
+  view_input.octavemode.value = tonumber(parsed_data[8])
+  interval_inv = booleantable[tonumber(parsed_data[8])]
+  
+  --9. Add notation [bool]
+  view_input.notationenable.value = booleantable[tonumber(parsed_data[9])]
+  notation_enable = booleantable[parsed_data[9]]
+  
+  --10. Editstep select [chooser:2]
+  view_input.editsteptype.value = tonumber(parsed_data[10])
+  interval_inv = not booleantable[tonumber(parsed_data[10])]
+  
+  --11. Aux Place [chooser:2]
+  view_input.auxenable.value = tonumber(parsed_data[11])
+  aux_place_enable = not booleantable[tonumber(parsed_data[11])]
+  
+  --12. Aux FX Prefix [2 Byte String]
+  view_input.auxprefix.text = tostring(parsed_data[12])
+  auxstr = tostring(parsed_data[12])
+
+  --13. Tonic Offset [chooser:12]
+  view_input.tonicpopup.value = tonumber(parsed_data[13])
+  tonic_offset = tonumber(parsed_data[13])-1
+  
+  --14. Scale [chooser:6]
+  view_input.scalepopup.value = tonumber(parsed_data[14])
+  updatescaleinfo(tonumber(parsed_data[14]))
+  
+  --15. Chroma Inv Axis [1:int]
+  view_input.chromainvaxis.text = tostring(parsed_data[15])
+  chromatic_inversion_axis = tonumber(parsed_data[15])
+    
+  
+  --clear 'parsed_data' & 'dataload'
+  for k in pairs(parsed_data) do
+    parsed_data[k] = nil
+  end
+  
+  for k in pairs(dataload_in) do
+    parsed_data[k] = nil
+  end
   
 end
 
@@ -703,7 +831,7 @@ renoise.tool():add_menu_entry {
   name = "Main Menu:Tools:Serial Killa",
   invoke = function() 
     dialog_box_window = renoise.app():show_custom_dialog(
-    "Serial Killa", dialog_content) 
+    "Serial Killa", redraw_shell) 
   end 
 }
 
@@ -747,11 +875,14 @@ function draw_window()
   local function motiflen_chg()
     --remove matrix from gui
     dialog_content:remove_child(matrix_column)
+    redraw_shell:remove_child(dialog_content)
     
     --make new vb object instances
     vb = renoise.ViewBuilder()
     view_input = vb.views
+    redraw_shell = vb:column{}
     matrix_column = vb:column{}
+    dialog_content = vb:column{}
     
     --close then reopen window
     dialog_box_window:close()
@@ -1081,6 +1212,39 @@ function draw_window()
 
   --inversion axis stuff
   local axis_row = vb:row{} 
+  
+  local editstepscale_tf = vb:column{
+    vb:text{
+      text="EditStep Scale:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(editstep_scale),
+        id = "editstepscale",
+        notifier = function(text)
+          editstep_scale = tonumber(text)
+        end
+    }
+  }
+  
+  local editstepaxis_tf = vb:column{
+    vb:text{
+      text="EditStep Inv Axis:"
+     },
+     vb:textfield {
+        width = BUTTON_WIDTH,
+        height = BUTTON_HEIGHT/2,
+        align = "center",
+        text = tostring(editstep_inversion_axis),
+        id = "editstepinvaxis",
+        notifier = function(text)
+          editstep_inversion_axis = tonumber(text)
+        end
+    }
+  }   
+  
   local chromaxis_tf = vb:column{
     vb:text{
       text="Chroma Inv Axis:"
@@ -1097,47 +1261,59 @@ function draw_window()
     }
   }
   
-  local axiscolspr1 = vb:column{width = 20}
-  local axiscolspr2 = vb:column{width = 20}
-  local axiscolspr3 = vb:column{width = 20}
-  
-  local editstepaxis_tf = vb:column{
-    vb:text{
-      text="EditStep Inv Axis:"
-     },
-     vb:textfield {
-        width = BUTTON_WIDTH,
-        height = BUTTON_HEIGHT/2,
-        align = "center",
-        text = tostring(editstep_inversion_axis),
-        id = "edistepinvaxis",
-        notifier = function(text)
-          editstep_inversion_axis = tonumber(text)
+  local octaveoption_tf = vb:column{
+    vb:vertical_aligner{
+      mode = "bottom",
+      height = BUTTON_HEIGHT,
+      vb:chooser {
+        id = "octavemode",
+        value = 1,
+        items = {"Strip Octave", "Invert Interval"},
+        notifier = function(new_index)
+        
+          if new_index == 1 then
+            interval_inv = false
+          else
+            interval_inv = true
+          end
+        
         end
+        }
+    }
+  }
+   
+  local commentoption_tf = vb:column{
+    vb:text {
+      text = "Add Notation:"
+    },
+    vb:checkbox{
+      id = "notationenable",
+      value = true,
+      notifier = function(value)
+        if value == false then
+          notation_enable = "false"
+        else
+          notation_enable = "true"
+        end
+             
+      end
     }
   }
   
-  local editstepscale_tf = vb:column{
-    vb:text{
-      text="EditStep Scale:"
-     },
-     vb:textfield {
-        width = BUTTON_WIDTH,
-        height = BUTTON_HEIGHT/2,
-        align = "center",
-        text = tostring(editstep_scale),
-        id = "edistepscale",
-        notifier = function(text)
-          editstep_scale = tonumber(text)
-        end
-    }
-  }   
+  local axiscolspr1 = vb:column{width = 20}
+  local axiscolspr2 = vb:column{width = 20}
+  local axiscolspr3 = vb:column{width = 20}
+  local axiscolspr4 = vb:column{width = 20}
+  local axiscolspr5 = vb:column{width = 20}
+ 
+  
+  
   
   -- editstep chooser 
   local editstepchooser_row = vb:vertical_aligner {
     mode="center",
     vb:chooser {
-      id = "chooser",
+      id = "editsteptype",
       value = 1,
       items = {"Global EditStep", "Per Note EditStep"},
       notifier = function(new_index)
@@ -1163,7 +1339,7 @@ function draw_window()
         height = BUTTON_HEIGHT/2,
         align = "center",
         text = "0M",
-        id = "Aux Prefix",
+        id = "auxprefix",
         notifier = function(text)
           auxstr = text
         end
@@ -1207,25 +1383,7 @@ function draw_window()
         value = 1,
         items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
         notifier = function(new_index)
-          if new_index == 1 then
-            scale_current = scale_chromatic
-          elseif new_index == 2 then
-            scale_current = scale_major
-          elseif new_index == 3 then
-            scale_current = scale_natminor
-          elseif new_index == 4 then
-            scale_current = scale_harminor
-          elseif new_index == 5 then
-            scale_current = scale_majorpent
-          elseif new_index == 6 then
-            scale_current = scale_minorpent
-          end
-            --load scale length
-            curscalelen = #scale_current
-            
-            --set inversion axis
-            chromatic_inversion_axis = curscalelen
-            view_input.chromainvaxis.text = tostring(curscalelen)
+          updatescaleinfo(new_index)  
           end
       }
     }
@@ -1240,9 +1398,6 @@ function draw_window()
         value = 1,
         items = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"},
         notifier = function(new_index)
-          globaltonic = new_index
-          
-          print("tonic popup notifier")
           tonic_offset = tonumber(new_index-1)
         end
       }
@@ -1293,6 +1448,11 @@ function draw_window()
   axis_row:add_child(editstepaxis_tf)
   axis_row:add_child(axiscolspr2)
   axis_row:add_child(chromaxis_tf)
+  axis_row:add_child(axiscolspr3)
+  axis_row:add_child(octaveoption_tf)
+  axis_row:add_child(axiscolspr4)
+  axis_row:add_child(commentoption_tf)
+  
     
   dialog_content:add_child(axis_row) 
   dialog_content:add_child(aux_row)  
@@ -1589,9 +1749,26 @@ function draw_window()
     else
       editstep_tmp = renoise.song().transport.edit_step
     end                 
-     
-    --move cursor 
+       
+    
+
+    --if starting a new prime and notation is enabled...    
+    if ((active_prime_degree==1)and(notation_enable=="true")) then
+      --record where pattern started
+      notstr_pat = renoise.song().transport.edit_pos.sequence
+      local curline = renoise.song().transport.edit_pos.line-1
+      
+      --add part that was started
+      local commentinfo = "<"..active_prime_type..active_prime_index..":"..curline
+      concat_pat_name(notstr_pat,commentinfo)
+      
+      --set flag to show current notation
+      notation_start = "true"
+    end
+   
+    --move cursor -
     jumpbystep(editstep_tmp*editstep_scale)
+  
 
     --increment to next degree in current prime string
     active_prime_degree=active_prime_degree+1
@@ -1607,6 +1784,19 @@ function draw_window()
       
       --spray mode off
       spraymodeactive=false
+      
+      --if notation is ongoing....(now complete)
+      if ((notation_start=="true")and(notation_enable=="true")) then
+        
+        --finish notation
+        local commentinfo = ">"
+        concat_pat_name(notstr_pat,commentinfo)
+        
+        --reset flag
+        notation_start = "false"
+      end
+      
+      
       
       --reset prime counter
       active_prime_degree=1
@@ -1664,11 +1854,13 @@ function draw_window()
   punch_row:add_child(jumpdown_button)   
   
   dialog_content:add_child(punch_row)
+  
+  redraw_shell:add_child(dialog_content)
 
   --displays dialog box
   if do_draw=="true" then
     dialog_box_window = renoise.app():show_custom_dialog(
-      "Serial Killa", dialog_content)
+      "Serial Killa", redraw_shell)
   end
 
     if test_mode == "true" then
@@ -1715,7 +1907,10 @@ local function open_song()
   chromatic_offset = renoise.song().transport.octave*12
   editstep_tmp = renoise.song().transport.edit_step
   
+  --make gui but dont display
   draw_window()
+  
+  --set that it will now display
   do_draw="true"
 end  
   
