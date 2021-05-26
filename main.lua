@@ -132,6 +132,9 @@ local placenotebusy = false
 
 --loading variables
 local booleantable = {false,true}
+local booltonum = {}
+booltonum[false] = 1
+booltonum[true] = 2
 
 
 ------------------------------------------
@@ -323,6 +326,171 @@ end
 --------------------------------------------------------------------------------
 -- Helper Functions / API
 --------------------------------------------------------------------------------
+
+--handles lua IO stuff
+function io_write_txt( file, tbl )
+    print( "------------------------ " )
+    print( "write in "..file )
+    io.output( io.open( file, "w" ) )
+    io.write( tbl )
+    io.close()
+    print( "---- write done ----" )
+end
+
+function write_settings_to_file()
+
+  --**calls file write prompt
+  local file_out = renoise.app():prompt_for_filename_to_write(".srl", "mytitle")
+
+  local s_indx
+
+  --compile master table
+  --1. degree list [multiple elements]
+  local degreerow_out = ""
+  
+  for s_indx = 1,global_motif_length do
+    degreerow_out = degreerow_out..view_input["prime_in"..s_indx].text
+    if(s_indx<global_motif_length) then
+      degreerow_out = degreerow_out..","
+    end
+  end
+  
+  --print("degreerow_out")
+  --print(degreerow_out)
+  
+  --2. degree velocity list [multiple elements]
+  local velrow_out = ""
+  
+  for s_indx = 1,global_motif_length do
+    velrow_out = velrow_out..view_input["deg_vel_in"..s_indx].text
+    if(s_indx<global_motif_length) then
+      velrow_out = velrow_out..","
+    end
+  end
+  
+  --print("velrow_out")
+  --print(velrow_out)
+  
+  --3. degree editstep list [multiple elements]
+  local editsteprow_out = ""
+  
+  for s_indx = 1,global_motif_length do
+    editsteprow_out = editsteprow_out..view_input["deg_editstep_in"..s_indx].text
+    if(s_indx<global_motif_length) then
+      editsteprow_out = editsteprow_out..","
+    end
+  end
+  
+  --print("editsteprow_out")
+  --print(editsteprow_out)
+  
+  --4. degree auxilary list [multiple elements]
+  local auxrow_out = ""
+  
+  for s_indx = 1,global_motif_length do
+    auxrow_out = auxrow_out..view_input["deg_aux_in"..s_indx].text
+    if(s_indx<global_motif_length) then
+      auxrow_out = auxrow_out..","
+    end
+  end
+ 
+  --print("auxrow_out")
+  --print(auxrow_out)
+  
+  --5. inversion bools [4 bools]
+  local invbool_out = ""
+  
+  invbool_out = invbool_out..tostring(booltonum[view_input.note_inv_bool.value])..","
+  invbool_out = invbool_out..tostring(booltonum[view_input.vel_inv_bool.value])..","
+  invbool_out = invbool_out..tostring(booltonum[view_input.editstep_inv_bool.value])..","
+  invbool_out = invbool_out..tostring(booltonum[view_input.aux_inv_bool.value])
+  
+  --print("invbool_out")
+  --print(invbool_out)
+  
+  --6. Editstep scale [1:num]
+  local editstepscale_out = view_input.editstepscale.text
+  
+  --print("editstepscale_out")
+  --print(editstepscale_out)
+  
+  --7. Editstep Inv Axis [1:num]
+  local editstepinv_out = view_input.editstepinvaxis.text
+  
+  --print("editstepinv_out")
+  --print(editstepinv_out)
+  
+  --8. Octave Option [chooser:2]
+  local octaveoption_out = view_input.octavemode.value
+  
+  --print("octaveoption_out")
+  --print(octaveoption_out)
+  
+  --9. Add notation [bool]
+  local addnotebool_out = booltonum[view_input.notationenable.value]
+  
+  --print("addnotebool_out")
+  --print(addnotebool_out) 
+  
+  --10. Editstep select [chooser:2]
+  local editstepoptselect_out = view_input.editsteptype.value
+  
+  --print("editstepoptselect_out")
+  --print(editstepoptselect_out)
+  
+  --11. Aux Place [chooser:2]
+  local auxplaceoptselect_out = view_input.auxenable.value
+  
+  --print("auxplaceoptselect_out")
+  --print(auxplaceoptselect_out)
+  
+  --12. Aux FX Prefix [2 Byte String]
+  local auxfxprefix_out = view_input.auxprefix.text
+  
+  --print("auxfxprefix_out")
+  --print(auxfxprefix_out)
+  
+  --13. Tonic Offset [chooser:12]
+  local tonicoffset_out = view_input.tonicpopup.value
+  
+  --print("tonicoffset_out")
+  --print(tonicoffset_out)
+  
+  --14. scale [chooser:6]
+  local scaleselect_out = view_input.scalepopup.value
+  
+  --print("tonicoffset_out")
+  --print(tonicoffset_out)
+  
+  --15. Chroma Inv Axis [1:int]
+  local chromainvaxis_out = view_input.chromainvaxis.text
+  
+ print("chromainvaxis_out")
+  print(chromainvaxis_out)
+
+  --combine all variables into master table
+  local outtbl =degreerow_out.."\n"..
+             velrow_out.."\n"..
+             editsteprow_out.."\n"..
+             auxrow_out.."\n"..
+             invbool_out.."\n"..
+             editstepscale_out.."\n"..
+             editstepinv_out.."\n"..
+             octaveoption_out.."\n"..
+             addnotebool_out.."\n"..
+             editstepoptselect_out.."\n"..
+             auxplaceoptselect_out.."\n"..
+             auxfxprefix_out.."\n"..
+             tonicoffset_out.."\n"..
+             scaleselect_out.."\n"..
+             chromainvaxis_out
+  
+
+  io_write_txt( file_out, outtbl )
+
+  print(outtbl)
+end
+
 
 local function show_status(message)
   renoise.app():show_status(message)
@@ -702,14 +870,14 @@ local function file_parser()
   5. inversion bools [4 bools]
   6. Editstep scale [1:num]
   7. Editstep Inv Axis [1:num]
-  8. Chroma Inv Axis [1:int]
-  9. Octave Option [chooser:2]
-  10. Add notation [bool]
-  11. Editstep select [chooser:2]
-  12. Aux Place [chooser:2]
-  13. Aux FX Prefer [2 Byte String]
-  14. Tonic Offset [chooser:12]
-  15. scale [chooser:6]
+  8. Octave Option [chooser:2]
+  9. Add notation [bool]
+  10. Editstep select [chooser:2]
+  11. Aux Place [chooser:2]
+  12. Aux FX Prefer [2 Byte String]
+  13. Tonic Offset
+  14. scale [chooser:6]
+  15. Chromainvaxis
   
   ]]--
   
@@ -805,16 +973,14 @@ local function file_parser()
   --15. Chroma Inv Axis [1:int]
   view_input.chromainvaxis.text = tostring(parsed_data[15])
   chromatic_inversion_axis = tonumber(parsed_data[15])
-    
   
-  --clear 'parsed_data' & 'dataload'
-  for k in pairs(parsed_data) do
-    parsed_data[k] = nil
-  end
+  print("chromatic_inversion_axis")
+  print(chromatic_inversion_axis)
   
-  for k in pairs(dataload_in) do
-    parsed_data[k] = nil
-  end
+  --initialize data parsing variables  
+  parsed_data = {}
+  dataload_in = {}
+  
   
 end
 
@@ -912,7 +1078,7 @@ function draw_window()
     text = "Save .srl File",
     tooltip = "Click to Save Serial Killa Preset",
     notifier = function()
-      
+      write_settings_to_file()  
     end
   }
 
@@ -982,7 +1148,7 @@ function draw_window()
           width = BUTTON_WIDTH,
           height = BUTTON_HEIGHT/menu_button_scale,
           align = "center",
-          text = "degree:"
+          text = "deg:"
         }
       degree_chroma_row:add_child(tf_obj) 
     elseif (tfrowscan==(global_motif_length+2)) then
@@ -1874,7 +2040,7 @@ end
 
 function set_test_vars()
    print("test variables active")
-   --generate_prime()
+   generate_prime()
 end
 
 -- Notifier handler functions  
