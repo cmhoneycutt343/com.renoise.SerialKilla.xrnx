@@ -73,7 +73,7 @@ local current_prime_val = 0
 --octave offset
 --local chromatic_offset = renoise.song().transport.octave*12
 local chromatic_offset
-local octave_strip
+local relative_octave
 local interval_inv = false
 
 --'spray' editstep (currently unused)
@@ -180,7 +180,7 @@ local function generate_prime()
   
   print("")
   print(view_input["1_1"].width)
-  --print(view_input.oct1_1.width)
+  print(view_input.oct1_1.width)
   print(view_input.vel1_1.width)
   
   
@@ -246,12 +246,12 @@ function generate_matrix()
         local offset_adjusted = (generated_prime[prime_index_col]-degree_offset)
         local symmat_index = tostring(generated_prime[(prime_index_col+prime_index_row-2)%global_motif_length+1])
         
-        local octave_strip
+        local relative_octave
         
         if(prime_index_row>prime_index_col) then
-          octave_strip = tostring(-math.floor(symmat_index/curscalelen))
+          relative_octave = tostring(-math.floor(symmat_index/curscalelen))
         else
-          octave_strip = tostring(math.floor(symmat_index/curscalelen))
+          relative_octave = tostring(math.floor(symmat_index/curscalelen))
         end
         
         --fold with inversion axis       
@@ -268,7 +268,7 @@ function generate_matrix()
         
         --fill cell
         view_input[cell_id].text = notestrreturn
-        --view_input[cell_id_oct].text = octave_strip
+        view_input[cell_id_oct].text = relative_octave
       
       --if note inversion not activated...  
       else
@@ -277,7 +277,7 @@ function generate_matrix()
         
         --get degree index 
         local degree_get = tonumber(symmat_index)%(curscalelen)
-        local octave_strip = tostring(math.floor(symmat_index/curscalelen))
+        local relative_octave = tostring(math.floor(symmat_index/curscalelen))
         
         --convert scale degree to chroma
         local chromafromscale = scale_current[degree_get+1]
@@ -287,7 +287,7 @@ function generate_matrix()
         
         --fill cell
         view_input[cell_id].text = notestreturn
-        --view_input[cell_id_oct].text = octave_strip
+        view_input[cell_id_oct].text = relative_octave
       end      
       
       
@@ -483,7 +483,7 @@ function write_settings_to_file()
              auxfxprefix_out.."\n"..
              tonicoffset_out.."\n"..
              scaleselect_out.."\n"..
-             chromainvaxis_out
+             chromainvaxis_out.."\n"
   
 
   io_write_txt( file_out, outtbl )
@@ -561,7 +561,7 @@ local function retreivecellattribs(primetype,primeindex,degree)
   table.insert(degreeinfo,view_input["vel"..mat_cell_id].text)
   table.insert(degreeinfo,view_input["step"..mat_cell_id].text)
   table.insert(degreeinfo,view_input["aux"..mat_cell_id].text)
-  --table.insert(degreeinfo,view_input["oct"..mat_cell_id].text)
+  table.insert(degreeinfo,view_input["oct"..mat_cell_id].text)
   
   --return data
   return degreeinfo 
@@ -659,7 +659,9 @@ function placenote(notein,curvelin,auxin,octin)
   local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[curcolumn]
   
   --write to pattern seq
-  noteplacepos.note_value=degreein+chromatic_offset
+  local reloct_buf = tonumber(octin)
+  
+  noteplacepos.note_value=degreein+chromatic_offset+(reloct_buf*12)
   noteplacepos.volume_value = curvel
   noteplacepos.instrument_value = curinst
 
@@ -1014,7 +1016,7 @@ function draw_window()
 
   local CONTENT_MARGIN = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN
 
-  local BUTTON_WIDTH = 2.3*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
+  local BUTTON_WIDTH = 3*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   local BUTTON_HEIGHT = 2*renoise.ViewBuilder.DEFAULT_CONTROL_HEIGHT
   
   local DEFAULT_DIALOG_MARGIN = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN
@@ -1806,14 +1808,14 @@ function draw_window()
             style = "strong",
             align = "left"
           },
-          --[[vb:text {
+          vb:text {
             width = 18,
             height = BUTTON_HEIGHT/2,
             id = "oct"..tostring(rowscan-1).."_"..tostring(colscan-1),
             text = "",
             style = "disabled",
             align = "left"
-          },]]--
+          },
           vb:text {
             width = 18,
             height = BUTTON_HEIGHT/2,
