@@ -23,6 +23,8 @@ local test_mode = "true"
 
 local do_draw = "false"
 
+local first_load = "true"
+
 --initialized 12 tone prime
 local initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
 local generated_prime = {}
@@ -2076,14 +2078,19 @@ local function open_song()
   editstep_tmp = renoise.song().transport.edit_step
   
   --make gui but dont display
-  draw_window()
+  if first_load=="true" then
+    draw_window()
+  end
   
   --set that it will now display
   do_draw="true"
+  first_load="false"
+  
+  
 end  
   
 local function close_song()  
- 
+  --redraw_shell:remove_child(dialog_content)
 end  
   
   
