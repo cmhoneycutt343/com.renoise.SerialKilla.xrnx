@@ -145,9 +145,9 @@ booltonum[true] = 2
 local function generate_prime() 
 
   --error against motifs not of length 12
-  if global_motif_length ~= 12 then
+--[[  if global_motif_length ~= 12 then
     error("Motif length must be 12 for a 12 tone prime")
-  end
+  end]]--
     
   --reinitialize prime values  
   initialized_prime = {0,1,2,3,4,5,6,7,8,9,10,11}
@@ -200,7 +200,7 @@ function load_custom_prime()
 end
 
 
---[[Complextion Matrix Generation Logic]]--
+--[[Completion Matrix Generation Logic]]--
 function generate_matrix()
   
   --for each column
@@ -250,10 +250,19 @@ function generate_matrix()
         
         local relative_octave
         
-        if(prime_index_row>prime_index_col) then
-          relative_octave = tostring(-math.floor(symmat_index/curscalelen))
+        if(interval_inv == true) then
+          if(prime_index_row>prime_index_col) then
+            relative_octave = tostring(-math.floor(symmat_index/curscalelen))
+            if(relative_octave=="-0") then
+              relative_octave = "-1"
+            end  
+            --relative_octave = "-1"
+          else
+            relative_octave = tostring(math.floor(symmat_index/curscalelen))
+            --relative_octave = "0"
+          end
         else
-          relative_octave = tostring(math.floor(symmat_index/curscalelen))
+          relative_octave = "0"
         end
         
         --fold with inversion axis       
