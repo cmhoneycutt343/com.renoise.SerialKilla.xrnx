@@ -174,7 +174,9 @@ local function generate_prime()
   --load new prime into text fields
   for prime_index_col = 1,12 do
       local tf_in = "prime_in"..tostring(prime_index_col)
-      view_input[tf_in].text = tostring(generated_prime[prime_index_col])
+      if (tf_in ~= nil) then
+        view_input[tf_in].text = tostring(generated_prime[prime_index_col])
+      end
   end
   
   --generate matrix from new prime
@@ -2053,7 +2055,7 @@ end
 
 function set_test_vars()
    print("test variables active")
-   generate_prime()
+   --generate_prime()
 end
 
 -- Notifier handler functions  
