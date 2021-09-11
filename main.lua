@@ -174,9 +174,7 @@ local function generate_prime()
   --load new prime into text fields
   for prime_index_col = 1,12 do
       local tf_in = "prime_in"..tostring(prime_index_col)
-      if (tf_in ~= nil) then
-        view_input[tf_in].text = tostring(generated_prime[prime_index_col])
-      end
+      view_input[tf_in].text = tostring(generated_prime[prime_index_col])
   end
   
   --generate matrix from new prime
@@ -1089,6 +1087,18 @@ function draw_window()
     end
   }
   
+  local brand_graphic = vb:bitmap {
+      -- recolor to match the GUI theme:
+      mode = "body_color",
+      -- bitmaps names should be specified with a relative path using
+      -- your tool script bundle path as base:
+      bitmap = "/Bitmaps/chuckb-serialkillagraphic-bmp.bmp",
+      notifier = function()
+        show_status("http://chuckb.biz")
+      end
+    }
+  
+  
   local savefile_button = vb:button {
     text = "Save .srl File",
     tooltip = "Click to Save Serial Killa Preset",
@@ -1108,7 +1118,8 @@ function draw_window()
     end
   }
   
-  file_row:add_child(loadfile_button) 
+  file_row:add_child(loadfile_button)
+  
   file_row:add_child(savefile_button) 
   
   ------------------------
@@ -1606,7 +1617,13 @@ function draw_window()
       dialog_content:add_child(gen_button)
   end
   
-  dialog_content:add_child(glbmotiflen_tf)
+  local motiflen_row = vb:horizontal_aligner{
+    mode = "justify"
+  }
+  motiflen_row:add_child(glbmotiflen_tf)
+  motiflen_row:add_child(brand_graphic)
+  dialog_content:add_child(motiflen_row)
+
 
   aux_row:add_child(editstepchooser_row)
   aux_row:add_child(colspr3) 
@@ -2033,6 +2050,8 @@ function draw_window()
   --------------------------
   punch_row:add_child(punch_button)
   punch_row:add_child(jumpdown_button)   
+  punch_row:add_child(spray_button)   
+  
   
   dialog_content:add_child(punch_row)
   
