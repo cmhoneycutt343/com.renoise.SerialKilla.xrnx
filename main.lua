@@ -116,6 +116,12 @@ local aux_inv_bool=false
 local global_edit_step = true
 local aux_place_enable = false
 
+--buffer to save fields during tonal -> perc mode and back
+local chromainv_modebuf
+local octavemode_movebuf
+local scale_movebuf
+
+
 local auxstr="0M"
 
 local chromatic_inversion_axis = 12
@@ -1403,7 +1409,7 @@ function draw_window()
   ----------------------
 
   --inversion axis stuff
-  local axis_row = vb:row{} 
+  local tonaloption_row = vb:row{} 
   
   local editstepscale_tf = vb:column{
     vb:text{
@@ -1437,7 +1443,75 @@ function draw_window()
     }
   }   
   
+  local tonalmode_tf = vb:column{
+    vb:vertical_aligner{
+      mode = "bottom",
+      height = BUTTON_HEIGHT,
+      vb:chooser {
+        id = "tonalmode",
+        value = 1,
+        items = {"Tonal Mode", "Perc Mode"},
+        notifier = function(new_index)
+  
+            if new_index == 1 then
+            
+                view_input.chromaxis_tfbox.visible = true
+                view_input.octaveoption_tfbox.visible = true
+                view_input.tonic_popupbox.visible = true
+                view_input.scale_popupbox.visible = true
+                
+               
+                interval_inv = octavemode_movebuf
+                if view_input.octavemode.value == 1 then
+                  interval_inv = false
+                else
+                  interval_inv = true
+                end
+        
+                
+                updatescaleinfo(scale_movebuf)
+                
+                
+     
+                chromatic_inversion_axis = chromainv_modebuf
+                view_input.chromainvaxis.text = tostring(chromatic_inversion_axis)
+
+                --chromatic_inversion_axis = chromainv_modebuf
+                
+              
+              else
+              
+                view_input.chromaxis_tfbox.visible = false
+                view_input.octaveoption_tfbox.visible = false
+                view_input.tonic_popupbox.visible = false
+                view_input.scale_popupbox.visible = false
+                
+                --always strip octave
+                octavemode_movebuf = interval_inv
+                interval_inv = false
+                
+                --always chromatic scale
+                --this will update the chromatic inversion axis so no need to reset that manually
+                scale_movebuf = view_input.scalepopup.value
+                updatescaleinfo(1)
+                
+                 --in perc mode....
+                --chroma inv axis should always be motif length
+                chromainv_modebuf = chromatic_inversion_axis        
+                chromatic_inversion_axis = global_motif_length
+                print("chromatic_inversion_axis reset to")
+                print(chromatic_inversion_axis)
+                
+                
+              end
+        
+        end
+        }
+     }
+  }
+  
   local chromaxis_tf = vb:column{
+    id = "chromaxis_tfbox",
     vb:text{
       text="Chroma Inv Axis:"
      },
@@ -1453,7 +1527,9 @@ function draw_window()
     }
   }
   
+  
   local octaveoption_tf = vb:column{
+    id = "octaveoption_tfbox",
     vb:vertical_aligner{
       mode = "bottom",
       height = BUTTON_HEIGHT,
@@ -1474,33 +1550,34 @@ function draw_window()
     }
   }
    
-  local commentoption_tf = vb:column{
-    vb:text {
-      text = "Add Notation:"
-    },
-    vb:checkbox{
-      id = "notationenable",
-      value = true,
-      notifier = function(value)
-        if value == false then
-          notation_enable = "false"
-        else
-          notation_enable = "true"
+  local commentoption_tf = 
+  vb:vertical_aligner{
+    mode = "center",
+      vb:text {
+        text = "Add Notation:"
+      },
+      vb:checkbox{
+        id = "notationenable",
+        value = true,
+        notifier = function(value)
+          if value == false then
+            notation_enable = "false"
+          else
+            notation_enable = "true"
+          end
+               
         end
-             
-      end
+      }
     }
-  }
+ 
   
   local axiscolspr1 = vb:column{width = 20}
   local axiscolspr2 = vb:column{width = 20}
   local axiscolspr3 = vb:column{width = 20}
   local axiscolspr4 = vb:column{width = 20}
   local axiscolspr5 = vb:column{width = 20}
- 
-  
-  
-  
+  local axiscolspr6 = vb:column{width = 25}
+   
   -- editstep chooser 
   local editstepchooser_row = vb:vertical_aligner {
     mode="center",
@@ -1566,6 +1643,7 @@ function draw_window()
   
     -- popup 
     local scale_popup = vb:column {
+      id = "scale_popupbox",
       vb:text {
         text = "Scale:"
       },
@@ -1581,6 +1659,7 @@ function draw_window()
     }
     
     local tonic_popup = vb:column {
+      id = "tonic_popupbox",
       vb:text {
         text = "Tonic Offset:"
       },
@@ -1623,36 +1702,40 @@ function draw_window()
   motiflen_row:add_child(glbmotiflen_tf)
   motiflen_row:add_child(brand_graphic)
   dialog_content:add_child(motiflen_row)
+ 
+ --motif define row
+  dialog_content:add_child(degree_chroma_row)
+  dialog_content:add_child(degree_vel_row)
+  dialog_content:add_child(degree_editstep_row)
+  dialog_content:add_child(degree_aux_row)
 
 
+ 
+  tonaloption_row:add_child(tonalmode_tf)
+  tonaloption_row:add_child(axiscolspr6)
+  tonaloption_row:add_child(chromaxis_tf)
+  tonaloption_row:add_child(axiscolspr3)
+  tonaloption_row:add_child(octaveoption_tf)
+  tonaloption_row:add_child(axiscolspr4)
+  tonaloption_row:add_child(tonic_popup)
+  tonaloption_row:add_child(colspr2)
+  tonaloption_row:add_child(scale_popup)  
+  
+  aux_row:add_child(editstepscale_tf)
+  aux_row:add_child(axiscolspr1)
+  aux_row:add_child(editstepaxis_tf)
+  aux_row:add_child(axiscolspr2)
   aux_row:add_child(editstepchooser_row)
   aux_row:add_child(colspr3) 
   aux_row:add_child(auxenable_row)
   aux_row:add_child(colspr1)
   aux_row:add_child(auxstr_tf)
   aux_row:add_child(colspr4)
-  aux_row:add_child(tonic_popup)
-  aux_row:add_child(colspr2)
-  aux_row:add_child(scale_popup)
-
- 
-  dialog_content:add_child(degree_chroma_row)
-  dialog_content:add_child(degree_vel_row)
-  dialog_content:add_child(degree_editstep_row)
-  dialog_content:add_child(degree_aux_row)
-
-  axis_row:add_child(editstepscale_tf)
-  axis_row:add_child(axiscolspr1)
-  axis_row:add_child(editstepaxis_tf)
-  axis_row:add_child(axiscolspr2)
-  axis_row:add_child(chromaxis_tf)
-  axis_row:add_child(axiscolspr3)
-  axis_row:add_child(octaveoption_tf)
-  axis_row:add_child(axiscolspr4)
-  axis_row:add_child(commentoption_tf)
+  aux_row:add_child(commentoption_tf)
   
+
     
-  dialog_content:add_child(axis_row) 
+  dialog_content:add_child(tonaloption_row) 
   dialog_content:add_child(aux_row)  
   dialog_content:add_child(load_button)
   
