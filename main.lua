@@ -192,7 +192,7 @@ local function generate_prime()
   print(view_input.vel1_1.width)
   
   
-  
+  view_input.loaduserprimebutton.color = {0,0,0}
   
 end
 
@@ -337,6 +337,7 @@ function generate_matrix()
   --recolors punch button????
   local buttonname = "punchbutton"
   view_input[buttonname].color = {0x00, 0x00, 0x00}
+
 end
 
 
@@ -590,7 +591,7 @@ local function active_primebut_clr(button_id)
   --reset last button color
   view_input[last_button_id].color={0,0,0}
  
-  --color current button green
+  --color current button blue
   view_input[button_id].color={0x22, 0xaa, 0xff}
   
   --set current button to set button
@@ -1020,6 +1021,7 @@ renoise.tool():add_menu_entry {
   end 
 }
 
+--reset tone row marker buttons
 local function reset_mkrs()
   for rowscan = 1,(global_motif_length) do
     view_input["P"..rowscan].color={0,0,0}
@@ -1028,6 +1030,12 @@ local function reset_mkrs()
     view_input["RI"..rowscan].color={0,0,0}
   end
 end 
+
+--function to color 'load user prime' button blue
+local function loadprime_remind()
+    print("loadprime_remind()")
+    view_input.loaduserprimebutton.color={0x22, 0xaa, 0xff}
+end
 
 function draw_window()
 
@@ -1113,16 +1121,7 @@ function draw_window()
     end
   }
 
-  local gen_button = vb:button {
-    text = "Generate 12-tone Prime",
-    tooltip = "Click to Generate Random Prime Serial Form",
-    notifier = function()
-      --local my_text_view = vb.views.prime_el_A
-      --my_text_view.text = "Button was hit."
-          
-      generate_prime()
-    end
-  }
+
   
   file_row:add_child(loadfile_button)
   
@@ -1131,13 +1130,17 @@ function draw_window()
   ------------------------
   ---Generate random Prime
   ------------------------  
-  local gen_button = vb:button {
-    text = "Generate Random Prime",
+  local genprime_button = vb:button {
+    text = "Generate 12-tone Prime",
     tooltip = "Click to Generate Random Prime Serial Form",
     notifier = function()
       --local my_text_view = vb.views.prime_el_A
       --my_text_view.text = "Button was hit."
-          
+      
+      interval_inv = false
+      
+      view_input.scalepopup.value = 1
+      updatescaleinfo(1)    
       generate_prime()
     end
   }
@@ -1156,6 +1159,9 @@ function draw_window()
         text = tostring(global_motif_length),
         id = "glbmotiflen",
         notifier = function(text)
+          --color 'load user prime' button blue
+          loadprime_remind()
+        
           global_motif_length = tonumber(text)
           --chromatic_inversion_axis = tonumber(text)
           motiflen_chg()
@@ -1191,7 +1197,8 @@ function draw_window()
         value = true,
         id = "note_inv_bool",
         notifier = function(value)
-            note_inv_bool = value
+          loadprime_remind()
+          note_inv_bool = value
         end,
       }
       
@@ -1205,7 +1212,10 @@ function draw_window()
           align = "center",
           text = " ",
           id = "prime_in"..tfrowscan-1,
-          rprint("prime_in"..tfrowscan-1)
+          rprint("prime_in"..tfrowscan-1),
+          notifier = function()
+            loadprime_remind()
+          end,        
         }
       degree_chroma_row:add_child(tf_obj)
     end
@@ -1232,6 +1242,7 @@ function draw_window()
         value = false,
         id = "vel_inv_bool",
         notifier = function(value)
+          loadprime_remind()
           vel_inv_bool = value 
         end,
       }
@@ -1248,6 +1259,7 @@ function draw_window()
         text = "R",
         id = "vel_rev_but",
         notifier = function()
+          loadprime_remind()
           
           --reverse textfields
           quickrev_buf = {} 
@@ -1269,9 +1281,12 @@ function draw_window()
           width = BUTTON_WIDTH,
           height = BUTTON_HEIGHT/menu_button_scale,
           align = "center",
-          text = "127",
+          text = "64",
           id = "deg_vel_in"..tfrowscan-1,
-          rprint("deg_vel_in"..tfrowscan-1)
+          rprint("deg_vel_in"..tfrowscan-1),
+          notifier = function()
+            loadprime_remind()
+          end,
         }
       degree_vel_row:add_child(tf_obj)
     end
@@ -1297,6 +1312,7 @@ function draw_window()
         value = false,
         id = "aux_inv_bool",
         notifier = function(value)
+          loadprime_remind()
           aux_inv_bool = value  
         end,
       }
@@ -1313,7 +1329,8 @@ function draw_window()
         text = "R",
         id = "aux_rev_but",
         notifier = function()
-        
+          loadprime_remind()
+          
           --reverse textfields
           quickrev_buf = {} 
           for index=1,global_motif_length do
@@ -1333,9 +1350,12 @@ function draw_window()
           width = BUTTON_WIDTH,
           height = BUTTON_HEIGHT/menu_button_scale,
           align = "center",
-          text = "127",
+          text = "64",
           id = "deg_aux_in"..tfrowscan-1,
-          rprint("deg_aux_in"..tfrowscan-1)
+          rprint("deg_aux_in"..tfrowscan-1),
+          notifier = function()
+            loadprime_remind()
+          end
         }
       degree_aux_row:add_child(tf_obj)
     end
@@ -1361,6 +1381,7 @@ function draw_window()
         value = false,
         id = "editstep_inv_bool",
         notifier = function(value)
+          loadprime_remind()
           editstep_inv_bool = value  
         end,
       }
@@ -1377,6 +1398,7 @@ function draw_window()
         text = "R",
         id = "editstep_rev_but",
         notifier = function()
+          loadprime_remind()
           --reverse textfields
           quickrev_buf = {} 
           for index=1,global_motif_length do
@@ -1398,7 +1420,10 @@ function draw_window()
           align = "center",
           text = "12",
           id = "deg_editstep_in"..tfrowscan-1,
-          rprint("deg_editstep_in"..tfrowscan-1)
+          rprint("deg_editstep_in"..tfrowscan-1),
+          notifier = function()
+            loadprime_remind()
+          end
         }
       degree_editstep_row:add_child(tf_obj)
     end
@@ -1422,6 +1447,7 @@ function draw_window()
         text = tostring(editstep_scale),
         id = "editstepscale",
         notifier = function(text)
+          loadprime_remind()
           editstep_scale = tonumber(text)
         end
     }
@@ -1438,6 +1464,7 @@ function draw_window()
         text = tostring(editstep_inversion_axis),
         id = "editstepinvaxis",
         notifier = function(text)
+          loadprime_remind()
           editstep_inversion_axis = tonumber(text)
         end
     }
@@ -1452,6 +1479,7 @@ function draw_window()
         value = 1,
         items = {"Tonal Mode", "Perc Mode"},
         notifier = function(new_index)
+            loadprime_remind()
   
             if new_index == 1 then
             
@@ -1522,6 +1550,7 @@ function draw_window()
         text = tostring(chromatic_inversion_axis),
         id = "chromainvaxis",
         notifier = function(text)
+          loadprime_remind()
           chromatic_inversion_axis = tonumber(text)
         end
     }
@@ -1538,6 +1567,8 @@ function draw_window()
         value = 1,
         items = {"Strip Octave", "Invert Interval"},
         notifier = function(new_index)
+          
+          loadprime_remind()
         
           if new_index == 1 then
             interval_inv = false
@@ -1653,6 +1684,7 @@ function draw_window()
         value = 1,
         items = {"Chromatic","Major","Natural Minor","Harmonic Minor","Major Pent.","Minor Pent."},
         notifier = function(new_index)
+          loadprime_remind()
           updatescaleinfo(new_index)  
           end
       }
@@ -1669,6 +1701,7 @@ function draw_window()
         value = 1,
         items = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"},
         notifier = function(new_index)
+          loadprime_remind()
           tonic_offset = tonumber(new_index-1)
         end
       }
@@ -1676,10 +1709,13 @@ function draw_window()
   
    local load_button = vb:button {
         text = "Load User Prime",
+        id = "loaduserprimebutton",
         tooltip = "Click to Calculate Matrix from User Prime",
+        color={0x22, 0xaa, 0xff},
         notifier = function()
           --local my_text_view = vb.views.prime_el_A
           --my_text_view.text = "Button was hit."
+          view_input.loaduserprimebutton.color={0,0,0}
 
           load_custom_prime()
         end
@@ -1691,15 +1727,14 @@ function draw_window()
   -------------------------
   -------------------------
   dialog_content:add_child(file_row)
-  
-  if global_motif_length==12 then
-      dialog_content:add_child(gen_button)
-  end
-  
+ 
   local motiflen_row = vb:horizontal_aligner{
     mode = "justify"
   }
   motiflen_row:add_child(glbmotiflen_tf)
+  if global_motif_length==12 then
+      motiflen_row:add_child(genprime_button)
+  end
   motiflen_row:add_child(brand_graphic)
   dialog_content:add_child(motiflen_row)
  
@@ -1778,28 +1813,30 @@ function draw_window()
               }
           rowscan_row:add_child(resetmkr_button)
         elseif ((rowscan==1)and(colscan==(global_motif_length+2))) then
-          local manual_mkrcont = vb:vertical_aligner{
-             mode = "justify",
-             vb:text{
-                text = "Manual:",
-                align = "center"
-             },
-             vb:horizontal_aligner {
-                mode = "center",
-                vb:checkbox {
-                  value = false,
-                  id = "manualmrk_chk",
-                  notifier = function(value)
-                    if value == true then
-                      manual_mark_mode="true" 
-                    else
-                      manual_mark_mode="false"
+          local manual_mkrcont = vb:horizontal_aligner{
+          width = BUTTON_WIDTH,
+          mode ="center",
+            vb:column{
+               vb:text{
+                  text = "Manual:",
+                  align = "center"
+               },
+               vb:horizontal_aligner {
+                  mode = "center",
+                  vb:checkbox {
+                    value = false,
+                    id = "manualmrk_chk",
+                    notifier = function(value)
+                      if value == true then
+                        manual_mark_mode="true" 
+                      else
+                        manual_mark_mode="false"
+                      end
                     end
-                  
-                  end,
-                }
+               }
              }
-          }
+           }
+       }
               
               
               
