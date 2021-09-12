@@ -650,14 +650,16 @@ end
 -------------------------------------------------
 --[[function that draws note into pattern seq]]--
 -------------------------------------------------
-function placenote(notein,curvelin,auxin,octin)
+function placenote(notein,curvelin,auxin,octin,noteplacein)
   --
   local cureditpos = renoise.song().transport.edit_pos
   local curtrack =renoise.song().selected_track_index
+  local curcolumn = renoise.song().selected_note_column_index
+  
   local curvel = tonumber(curvelin)
   local curinst = tonumber(renoise.song().selected_instrument_index-1)
   local curaux = tonumber(auxin)
-  local curcolumn = renoise.song().selected_note_column_index
+  
   local curoct = 0
   
   --gets chroma index
@@ -674,7 +676,10 @@ function placenote(notein,curvelin,auxin,octin)
   chromatic_offset = (renoise.song().transport.octave+tonumber(curoct)+oct_scale_crr)*12  
   
   --variable for place to write in pattern seq
+  --[[
   local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[curcolumn]
+  ]]--
+  local noteplacepos = noteplacein
   
   --write to pattern seq
   local reloct_buf = tonumber(octin)
@@ -1836,7 +1841,7 @@ function draw_window()
                }
              }
            }
-       }
+         }
               
               
               
@@ -2057,9 +2062,15 @@ function draw_window()
     
     --get cell attributes
     received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,active_prime_degree)
+    
+    --get note position
+    local cureditpos = renoise.song().transport.edit_pos
+    local curtrack =renoise.song().selected_track_index
+    local curcolumn = renoise.song().selected_note_column_index
+    local noteplacepos = renoise.song().patterns[cureditpos.sequence].tracks[curtrack].lines[cureditpos.line].note_columns[curcolumn]
       
     --place note
-    placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4],received_degree_info[5])
+    placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4],received_degree_info[5],noteplacepos)
     
     --either jump by global editstep or draw from cell    
     if global_edit_step == false then            
@@ -2124,6 +2135,107 @@ function draw_window()
     coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
   end
   
+  ---------------------------
+  --spraystep
+  ---------------------------
+  local function spraystep()
+  
+    local editstepsum_buffer = 0
+    
+    --get note insertion position
+    local cureditpos = renoise.song().transport.edit_pos
+    local curtrack =renoise.song().selected_track_index
+    local curcolumn = renoise.song().selected_note_column_index
+    
+    for sprayinsert_index = 1,global_motif_length do    
+        --get cell attributes
+        received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,sprayinsert_index)
+        
+        
+
+        
+        local tmp_pos_2 = renoise.song().transport.edit_pos  
+        tmp_pos_2.global_line_index = tmp_pos_2.global_line_index + editstepsum_buffer
+        
+        print("")
+        print("sprayinsert_index:",sprayinsert_index)
+        print("editstepsum_buffer",editstepsum_buffer)
+        print("tmp_pos.global_line_index",tmp_pos_2.global_line_index)
+        print("tmp_pos_2.sequence",tmp_pos_2.sequence)
+        print("tmp_pos_2.line",tmp_pos_2.line)
+        print("")
+          
+        --calculate position based on already factored steps
+        local noteplacepos = renoise.song().patterns[tmp_pos_2.sequence].tracks[curtrack].lines[tmp_pos_2.line].note_columns[curcolumn] 
+          
+        --place note
+        placenote(received_degree_info[1],received_degree_info[2],received_degree_info[4],received_degree_info[5],noteplacepos)
+        
+        --either jump by global editstep or draw from cell    
+        if global_edit_step == false then            
+          editstep_tmp = received_degree_info[3]
+        else
+          editstep_tmp = renoise.song().transport.edit_step
+        end                 
+       
+        --if starting a new prime and notation is enabled...    
+        if ((sprayinsert_index==1)and(notation_enable=="true")) then
+          --record where pattern started
+          notstr_pat = renoise.song().transport.edit_pos.sequence
+          local curline = renoise.song().transport.edit_pos.line-1
+          
+          --add part that was started
+          local commentinfo = "<"..active_prime_type..active_prime_index..":"..curline
+          concat_pat_name(notstr_pat,commentinfo)
+          
+          --set flag to show current notation
+          notation_start = "true"
+        end
+       
+        --accumulate position by adding last editstep jump
+        editstepsum_buffer=editstepsum_buffer+(editstep_tmp)
+              
+        --local tmp_pos = renoise.song().transport.edit_pos
+        --cureditpos.line = tmp_pos.global_line_index + editstepsum_buffer
+      
+    
+        --increment to next degree in current prime string
+        --active_prime_degree=active_prime_degree+1
+        
+        --if all elements in prime string have been called
+        if(sprayinsert_index==(global_motif_length)) then
+          print('prime row complete')
+          
+          --disqualify prime button from color reset 
+          last_button_id = "punchbutton"
+          --color it blue
+          view_input[active_prime_type..active_prime_index].color={0x22, 0xaa, 0x00}
+          
+          --spray mode off
+          spraymodeactive=false
+          
+          --if notation is ongoing....(now complete)
+          if ((notation_start=="true")and(notation_enable=="true")) then
+            
+            --finish notation
+            local commentinfo = ">"
+            concat_pat_name(notstr_pat,commentinfo)
+            
+            --reset flag
+            notation_start = "false"
+          end
+          
+          
+          
+          --reset prime counter
+          --=1
+        end
+        
+        -- color the next degree cell
+        --coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
+      end
+  end
+  
   --punch button writes cell to pattern seq
   local punch_button = vb:button {
     width = BUTTON_WIDTH*(global_motif_length+2)/3,
@@ -2158,10 +2270,8 @@ function draw_window()
     text = "Spray Row",
     
     notifier = function()
-       punchaction() 
-       punchaction() 
-       punchaction() 
-       punchaction() 
+      --internally loop spray
+      spraystep()      
     end
   }
   
