@@ -144,6 +144,12 @@ local booltonum = {}
 booltonum[false] = 1
 booltonum[true] = 2
 
+--osc objects
+local client, socket_error
+local OscMessage
+local OscBundle
+local notevalue_curaud
+local aud_bool = true
 
 ------------------------------------------
 --[[function to generate 12 tone prime]]--
@@ -706,6 +712,93 @@ function jumpbystep(manualeditstep)
     tmp_pos.global_line_index = tmp_pos.global_line_index + manualeditstep
     --move pattern cursor
     renoise.song().transport.edit_pos = tmp_pos
+end
+
+-----------------------
+--OSC / Note Triggering
+-----------------------
+function current_degree_abspitch()
+  --get degree info
+  received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,active_prime_degree)
+
+  local degreein = notetochroma[received_degree_info[1]]
+  
+  local oct_scale_crr = 0
+  local reloct_buf = tonumber(received_degree_info[5])
+
+  --correction to add octave to all notes 'below' the global tonic
+  if(degreein<tonic_offset) then
+    oct_scale_crr = 1 
+  end
+
+  --gets octave offset from GUI
+  chromatic_offset = (renoise.song().transport.octave+oct_scale_crr)*12  
+
+  local note_absvalue=degreein+chromatic_offset+(reloct_buf*12)
+  
+  return note_absvalue
+end
+
+
+function start_osc()
+  client, socket_error = renoise.Socket.create_client(
+  "localhost", 8008, renoise.Socket.PROTOCOL_UDP)
+  
+  if (socket_error) then
+  renoise.app():show_warning(("Failed to start the " ..
+  "OSC client. Error: '%s'"):format(socket_error))
+  return
+  end
+  
+  OscMessage = renoise.Osc.Message
+  OscBundle = renoise.Osc.Bundle
+end
+
+start_osc()
+
+function note_off_func()
+
+  local note_off = OscMessage("/renoise/trigger/note_off", {   
+   {tag="i", value=-1},
+   {tag="i", value=-1},
+   {tag="i", value=notevalue_curaud},
+   })  
+    
+   client:send(note_off)
+   renoise.tool():remove_timer(note_off_func)
+
+end
+
+function audition_cell()
+  print("in audition_cell()")
+  
+  
+   
+   if (renoise.tool():has_timer(note_off_func)==true) then
+      print("im bsuy damnit")
+      note_off_func()
+      
+   else 
+      notevalue_curaud = current_degree_abspitch()
+  
+      local note_on = OscMessage("/renoise/trigger/note_on", {   
+       {tag="i", value=-1},
+       {tag="i", value=-1},
+       {tag="i", value=notevalue_curaud},
+       {tag="i", value=tonumber(received_degree_info[2])}   
+      })  
+   
+      client:send(note_on)
+   
+      renoise.tool():add_timer(note_off_func,1000)
+   end
+   
+end
+
+
+
+function audition_row()
+
 end
 
 ----------------------------------------------------------------------------
@@ -1797,14 +1890,31 @@ function draw_window()
       for colscan = 1,(global_motif_length+2) do
         
         -----corners to be blank spaces-------
-        if ((rowscan==(global_motif_length+2))and(colscan==1))or((rowscan==(1))and(colscan==1)) then
-          local colscan_button =vb:text {
+        if ((rowscan==1)and(colscan==1)) then
+          local colscan_button =vb:button {
             width = BUTTON_WIDTH,
             height = BUTTON_HEIGHT,
-            align = "center",
-            text = " "
-          }  
+            text = "Aud\nCell",
+            notifier = function()
+              audition_cell()
+            end
+          } 
+         
           rowscan_row:add_child(colscan_button)
+        
+        elseif ((rowscan==(global_motif_length+2))and(colscan==1)) then
+          local colscan_button2 =vb:button {
+            width = BUTTON_WIDTH,
+            height = BUTTON_HEIGHT,
+            text = "Aud\nRow",
+            notifier = function()
+              audition_row()
+            end
+          } 
+          
+          rowscan_row:add_child(colscan_button2)
+          
+        
         
         --reset markers
         elseif ((rowscan==(global_motif_length+2))and(colscan==(global_motif_length+2))) then
@@ -2134,6 +2244,10 @@ function draw_window()
     
     -- color the next degree cell
     coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
+    
+    if(aud_bool==true) then
+      audition_cell()
+    end
   end
   
   ---------------------------
