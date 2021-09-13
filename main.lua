@@ -641,6 +641,7 @@ local function coloractivedegree(primetype,primeindex,degree)
   --colors current degree box
   local cell_id = "col"..tostring(row_index).."_"..tostring(col_index)
   print(cell_id)
+  
   view_input[cell_id].style = "plain"
   
   --sets current box to last box
@@ -2147,7 +2148,7 @@ function draw_window()
     local curtrack =renoise.song().selected_track_index
     local curcolumn = renoise.song().selected_note_column_index
     
-    for sprayinsert_index = 1,global_motif_length do    
+    for sprayinsert_index = active_prime_degree,global_motif_length do    
         --get cell attributes
         received_degree_info = retreivecellattribs(active_prime_type,active_prime_index,sprayinsert_index)
         
@@ -2223,16 +2224,24 @@ function draw_window()
             
             --reset flag
             notation_start = "false"
+            
+            --reset active prime degree
+            active_prime_degree = 1
+            
+            --uncolor last cell
+            -- color the next degree cell
+            coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
           end
           
           
           
           --reset prime counter
           --=1
+          -- color the next degree cell
+          coloractivedegree(active_prime_type,active_prime_index,0)
         end
         
-        -- color the next degree cell
-        --coloractivedegree(active_prime_type,active_prime_index,active_prime_degree)
+        
       end
   end
   
